@@ -119,18 +119,21 @@ class InfiniteInput(object):
 def source(src, begin = 0, end = None):
     return InfiniteInput(src, begin, end)
 
-def _match_symbol(name, s, conv = value):
-    if not isinstance(s, str):
-        raise Exception("Not a string")
-    if len(s) != 1:
-        raise Exception("len != 1")
+def _match(name, s, conv):
     @parser(name)
     def fn(src):
         v = src[0]
         return (1, conv(v)) if v == s else nomatch
     return fn
 
-def _match_string(name, s, conv = value):
+def _match_symbol(name, s, conv):
+    if not isinstance(s, str):
+        raise Exception("Not a string")
+    if len(s) != 1:
+        raise Exception("len != 1")
+    return _match(name, s, conv)
+
+def _match_string(name, s, conv):
     if not isinstance(s, str):
         raise Exception("Not a string")
     slen = len(s)
@@ -142,7 +145,7 @@ def _match_string(name, s, conv = value):
         return (slen, conv(v)) if v == s else nomatch
     return fn
 
-def _match_iterable(name, pat, conv = value):
+def _match_iterable(name, pat, conv):
     if not is_iterable(pat):
         raise Exception("Don't know what to do with {}".format(seq))
 
@@ -153,7 +156,7 @@ def _match_iterable(name, pat, conv = value):
         return (1, conv(v)) if v in seq else nomatch
     return fn
 
-def _match_any(name, tests, conv = value):
+def _match_any(name, tests, conv):
     @parser(name)
     def fn(src):
         for test in tests:
@@ -164,7 +167,7 @@ def _match_any(name, tests, conv = value):
         return nomatch
     return fn
 
-def _match_seq(name, tests, conv = value):
+def _match_seq(name, tests, conv):
     @parser(name)
     def fn(src):
         total = []
@@ -179,12 +182,12 @@ def _match_seq(name, tests, conv = value):
         return pos, conv(total)
     return fn
 
-def _one_more(name, test, conv = value):
+def _one_more(name, test, conv):
     @parser(name)
     def fn(src):
         total = []
         pos = 0
-        res = test(src[pos:])
+        res = test(src)
         if res == nomatch:
             return res
         while res != nomatch:
@@ -194,12 +197,12 @@ def _one_more(name, test, conv = value):
         return pos, conv(total)
     return fn
 
-def _zero_more(name, test, conv = value):
+def _zero_more(name, test, conv):
     @parser(name)
     def fn(src):
         total = []
         pos = 0
-        res = test(src[pos:])
+        res = test(src)
         while res != nomatch:
             total.append(res[1])
             pos += res[0]
@@ -235,24 +238,28 @@ def __extract_rule_action(data):
 
     raise Err("Don't know how to extract from {}", data)
 
-def mk_parser(top):
-    name = top.rule if hasattr(top, 'rule') else top.__name__
-    data = top()
-    rule, action = __extract_rule_action(data)
-
+def __mk_parser(name, rule, action):
     if isinstance(rule, str):
         return __mk_str_parser(name, rule, action)
     elif isinstance(rule, ParseInfo):
         return __mk_fn_parser(name, rule, action)
-    else:
-        raise Err("Do not know what to do with {}", rule)
+
+    raise Err("Do not know what to do with {}", rule)
+
+def mk_parser(top):
+    name = top.rule if hasattr(top, 'rule') else top.__name__
+    data = top()
+    rule, action = __extract_rule_action(data)
+    return __mk_parser(name, rule, action)
 
 
-def a0_inf(test):
+def r0_inf(test):
     return ParseInfo(_zero_more, test)
-def a1_inf(test):
+def r0_1(test):
+    return ParseInfo(_0_1, test)
+def r1_inf(test):
     return ParseInfo(_one_more, test)
 def seq(*tests):
     return ParseInfo(_match_seq, tests)
-def any(*tests):
+def choice(*tests):
     return ParseInfo(_match_any, tests)
