@@ -5,6 +5,7 @@
 # Licensed under MIT License
 
 import collections
+import traceback
 
 def is_iterable(v):
     return isinstance(v, collections.Iterable)
@@ -46,3 +47,34 @@ class Null(object):
 class Err(Exception):
     def __init__(self, msg, *args, **kwargs):
         super(Err, self).__init__(msg.format(*args, **kwargs))
+
+def log(msg, *args, **kwargs):
+    print msg.format(*args, **kwargs)
+
+def __traceback():
+    t = traceback.format_exc().strip()
+    if t and t != "None":
+        log("TB:{}", t)
+
+log.traceback = __traceback
+
+def track(fn):
+    def wrapper(*args, **kwargs):
+        arglist = [str(x) for x in args] \
+            + ['='.join([str(k), str(v)]) for k, v in kwargs]
+        log("{}({})", fn.__name__, ','.join(arglist))
+        log.traceback()
+        res = fn(*args, **kwargs)
+        log("=> {}", res)
+        return res
+
+    wrapper.__name__ = fn.__name__
+    wrapper.__doc__ = fn.__doc__
+    wrapper.__dict__.update(fn.__dict__)
+    return wrapper
+
+def integers(start):
+    i = start
+    while True:
+        yield i
+        i += 1
