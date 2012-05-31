@@ -127,10 +127,11 @@ def _match(name, s, conv):
     return fn
 
 def _match_symbol(name, s, conv):
-    if not isinstance(s, str):
+    if isinstance(s, str):
+        if len(s) != 1:
+            raise Exception("len != 1")
+    elif s != nomatch:
         raise Exception("Not a string")
-    if len(s) != 1:
-        raise Exception("len != 1")
     return _match(name, s, conv)
 
 def _match_string(name, s, conv):
