@@ -210,6 +210,25 @@ def _zero_more(name, test, conv):
         return pos, conv(total)
     return fn
 
+def _0_1(name, test, conv):
+    @parser(name)
+    def fn(src):
+        pos = 0
+        res = test(src)
+        return res[0], conv(res[1]) if res != nomatch else (0, empty)
+    return fn
+
+def _exclude(name, test, conv):
+    @parser(name)
+    def fn(src):
+        pos = 0
+        res = test(src)
+        while res == nomatch and pos != len(src):
+            pos += 1
+            res = test(src[pos:])
+        return (pos, conv(src[0:pos]))
+    return fn
+
 class ParseInfo(tuple):
     def __new__(cls, *args):
         return tuple.__new__(cls, args)
@@ -235,6 +254,8 @@ def __extract_rule_action(data):
         return data, value
     elif is_iterable(data) and len(data) == 2:
         return data
+    elif data == nomatch:
+        return data, value
 
     raise Err("Don't know how to extract from {}", data)
 
@@ -243,6 +264,8 @@ def __mk_parser(name, rule, action):
         return __mk_str_parser(name, rule, action)
     elif isinstance(rule, ParseInfo):
         return __mk_fn_parser(name, rule, action)
+    elif rule == nomatch:
+        return _match(name, rule, action)
 
     raise Err("Do not know what to do with {}", rule)
 
@@ -263,3 +286,7 @@ def seq(*tests):
     return ParseInfo(_match_seq, tests)
 def choice(*tests):
     return ParseInfo(_match_any, tests)
+def exclude(test):
+    return ParseInfo(_exclude, test)
+def eof():
+    return nomatch, ignore
