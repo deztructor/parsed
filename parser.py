@@ -36,16 +36,16 @@ def debug_print(msg, *args, **kwargs):
 
 def parser(name):
     def deco(fn):
-        fn.rule = name
+        fn.__name__ = name
         def wrapper(*args, **kwargs):
             global debug_indent
-            debug_print("G:{}({}, {}) {{", fn.rule, args, kwargs)
+            debug_print("G:{}({}, {}) {{", fn.__name__, args, kwargs)
             with debug_indent:
                 res = fn(*args, **kwargs)
             debug_print("}} => {}", res)
             return res
         if is_parser_trace:
-            wrapper.rule = name
+            wrapper.__name__ = name
             return wrapper
         else:
             return fn
