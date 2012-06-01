@@ -231,52 +231,53 @@ def _exclude(name, test, conv):
         return (pos, conv(src[0:pos]))
     return fn
 
+def is_str(c):
+    return isinstance(c, str) or c == nomatch
+
 class ParseInfo(tuple):
     def __new__(cls, *args):
         return tuple.__new__(cls, args)
 
-def __mk_str_parser(name, rule, action):
-    if len(rule) == 1:
-        return _match_symbol(name, rule, action)
-    else:
-        return _match_iterable(name, rule, action)
-
 def __mk_fn_parser(name, rule, action):
     fn, data = rule
-    if is_iterable(data):
+    if is_str(data):
+        pass
+    elif is_iterable(data):
         data = [mk_parser(x) for x in data]
     else:
         data = mk_parser(data)
     return fn(name, data, action)
 
+def __extract_rule(entity):
+    if isinstance(entity, ParseInfo):
+        return entity
+    elif is_str(entity):
+        return sym(entity)
+    else:
+        return nomatch
+
 def __extract_rule_action(data):
-    if isinstance(data, ParseInfo):
-        return data, value
-    elif isinstance(data, str):
-        return data, value
+    res = __extract_rule(data)
+    if res != nomatch:
+        return res, value
     elif is_iterable(data) and len(data) == 2:
-        return data
-    elif data == nomatch:
-        return data, value
+        res = __extract_rule(data[0])
+        if res != nomatch:
+            return res, data[1]
 
     raise Err("Don't know how to extract from {}", data)
 
 def __mk_parser(name, rule, action):
-    if isinstance(rule, str):
-        return __mk_str_parser(name, rule, action)
-    elif isinstance(rule, ParseInfo):
+    if isinstance(rule, ParseInfo):
         return __mk_fn_parser(name, rule, action)
-    elif rule == nomatch:
-        return _match(name, rule, action)
 
     raise Err("Do not know what to do with {}", rule)
 
 def mk_parser(top):
-    name = top.rule if hasattr(top, 'rule') else top.__name__
+    name = top.__name__
     data = top()
     rule, action = __extract_rule_action(data)
     return __mk_parser(name, rule, action)
-
 
 def r0_inf(test):
     return ParseInfo(_zero_more, test)
@@ -292,3 +293,6 @@ def exclude(test):
     return ParseInfo(_exclude, test)
 def eof():
     return nomatch, ignore
+def sym(c): return ParseInfo(_match_symbol, c) \
+        if c == nomatch or len(c) == 1 \
+        else ParseInfo(_match_iterable, c)
