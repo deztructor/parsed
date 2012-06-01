@@ -19,8 +19,9 @@ def rpar() : return ')', ignore
 def S0gt(): return r0_inf(space), ignore
 def atom(): return seq(S0gt, anum), first
 def semicol(): return ';', ignore
-def noteol(): return ne(eol) 
-def comment(): return seq(semicol, noteol, eol), first
+def noteol(): return ne(eol), value
+def neol_0inf(): return r0_inf(noteol), list2str
+def comment(): return seq(semicol, neol_0inf, eol), first
 def atoms(): return r1_inf(atom)
 def alist(): return seq(lpar, atoms, rpar), first
 def alist_or_comment(): return choice(comment, alist), value

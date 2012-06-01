@@ -223,12 +223,8 @@ def _0_1(name, test, conv):
 def _ne(name, test, conv):
     @parser(name)
     def fn(src):
-        pos = 0
         res = test(src)
-        while res == nomatch and pos != len(src):
-            pos += 1
-            res = test(src[pos:])
-        return (pos, conv(src[0:pos]))
+        return (1, conv(src[0])) if res == nomatch else nomatch
     return fn
 
 def is_str(c):
