@@ -13,6 +13,7 @@ end = const('end')
 def ignore(x): return empty
 def value(x): return x
 def first(x): return x[0]
+second = nth(1)
 def list2str(x): return ''.join(x)
 
 is_parser_trace = True
@@ -251,14 +252,16 @@ def __extract_rule(entity):
     else:
         return nomatch
 
-def __extract_rule_action(data):
+def __extract_rule_action(data, name = "?"):
     res = __extract_rule(data)
     if res != nomatch:
-        return res, value
+        return name, res, value
     elif is_iterable(data) and len(data) == 2:
         res = __extract_rule(data[0])
         if res != nomatch:
-            return res, data[1]
+            return name, res, data[1]
+    elif callable(data):
+        return __extract_rule_action(data(), data.__name__)
 
     raise Err("Don't know how to extract from {}", data)
 
@@ -268,11 +271,8 @@ def __mk_parser(name, rule, action):
 
     raise Err("Do not know what to do with {}", rule)
 
-def mk_parser(top):
-    name = top.__name__
-    data = top()
-    rule, action = __extract_rule_action(data)
-    return __mk_parser(name, rule, action)
+def mk_parser(top, name = ""):
+    return __mk_parser(*__extract_rule_action(top, name))
 
 def r0_inf(test):
     return ParseInfo(_zero_more, test)
