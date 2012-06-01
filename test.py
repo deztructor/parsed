@@ -19,7 +19,7 @@ def rpar() : return ')', ignore
 def S0gt(): return r0_inf(space), ignore
 def atom(): return seq(S0gt, anum), first
 def semicol(): return ';', ignore
-def noteol(): return exclude(eol) 
+def noteol(): return ne(eol) 
 def comment(): return seq(semicol, noteol, eol), first
 def atoms(): return r1_inf(atom)
 def alist(): return seq(lpar, atoms, rpar), first

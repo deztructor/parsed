@@ -220,7 +220,7 @@ def _0_1(name, test, conv):
         return res[0], conv(res[1]) if res != nomatch else (0, empty)
     return fn
 
-def _exclude(name, test, conv):
+def _ne(name, test, conv):
     @parser(name)
     def fn(src):
         pos = 0
@@ -289,8 +289,8 @@ def seq(*tests):
     return ParseInfo(_match_seq, tests)
 def choice(*tests):
     return ParseInfo(_match_any, tests)
-def exclude(test):
-    return ParseInfo(_exclude, test)
+def ne(test):
+    return ParseInfo(_ne, test)
 def eof():
     return nomatch, ignore
 def sym(c): return ParseInfo(_match_symbol, c) \
