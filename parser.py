@@ -36,6 +36,7 @@ def debug_print(msg, *args, **kwargs):
 
 def parser(name):
     def deco(fn):
+        global is_parser_trace
         fn.__name__ = name
         def wrapper(*args, **kwargs):
             global debug_indent
