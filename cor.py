@@ -78,3 +78,8 @@ def integers(start):
     while True:
         yield i
         i += 1
+
+def nth(idx):
+    res = lambda x: x[idx]
+    res.__name__ = '_'.join(['nth', str(idx)])
+    return res
