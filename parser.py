@@ -236,12 +236,11 @@ class ParseInfo(tuple):
 
 def __mk_fn_parser(name, rule, action):
     fn, data = rule
-    if is_str(data):
-        pass
-    elif is_iterable(data):
-        data = [mk_parser(x) for x in data]
-    else:
-        data = mk_parser(data)
+    if not is_str(data):
+        if is_iterable(data):
+            data = [mk_parser(x) for x in data]
+        else:
+            data = mk_parser(data)
     return fn(name, data, action)
 
 def __extract_rule(entity):
