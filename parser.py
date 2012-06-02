@@ -36,9 +36,11 @@ def debug_print(msg, *args, **kwargs):
         msg.format(*args, **kwargs)
 
 def parser(name):
+    def mk_name(name):
+        return ''.join(['?', name])
     def deco(fn):
         global is_parser_trace
-        fn.__name__ = name
+        fn.__name__ = mk_name(name)
         def wrapper(*args, **kwargs):
             global debug_indent
             debug_print("{}({}) {{", fn.__name__,
@@ -48,7 +50,7 @@ def parser(name):
             debug_print("}} => {}", printable_args(res))
             return res
         if is_parser_trace:
-            wrapper.__name__ = name
+            wrapper.__name__ = mk_name(name)
             return wrapper
         else:
             return fn
