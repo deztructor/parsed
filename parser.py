@@ -57,7 +57,7 @@ def parser(name):
     return deco
 
 class InfiniteInput(object):
-    
+
     len_limit = 1024 * 64
 
     def __init__(self, src, begin = 0, end = None):
@@ -245,6 +245,7 @@ class ParseInfo(tuple):
     def __new__(cls, *args):
         return tuple.__new__(cls, args)
 
+
 def __mk_fn_parser(name, rule, action):
     fn, data = rule
     if not is_str(data):
@@ -283,21 +284,32 @@ def __mk_parser(name, rule, action):
 
     raise Err("Do not know what to do with {}", rule)
 
+
 def mk_parser(top, name = ""):
     return __mk_parser(*__extract_rule_action(top, name))
 
+def __normalize(v):
+    if callable(v):
+        return v
+    if is_str(v):
+        fn = lambda: (v, value)
+        fn.__name__ = ''.join(('!', v))
+        return fn
+    raise Err("Don't know how to normalize {}", v)
+
+
 def r0_inf(test):
-    return ParseInfo(_zero_more, test)
+    return ParseInfo(_zero_more, __normalize(test))
 def r0_1(test):
-    return ParseInfo(_0_1, test)
+    return ParseInfo(_0_1, __normalize(test))
 def r1_inf(test):
-    return ParseInfo(_one_more, test)
+    return ParseInfo(_one_more, __normalize(test))
 def seq(*tests):
     return ParseInfo(_match_seq, tests)
 def choice(*tests):
     return ParseInfo(_match_any, tests)
 def ne(test):
-    return ParseInfo(_ne, test)
+    return ParseInfo(_ne, __normalize(test))
 def eof():
     return nomatch, ignore
 def sym(c): return ParseInfo(_match_symbol, c) \
