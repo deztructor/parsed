@@ -14,6 +14,7 @@ def ignore(*x): return empty
 def value(x): return x
 def first(x): return x[0]
 second = nth(1)
+third = nth(2)
 def list2str(x): return ''.join(x)
 
 is_parser_trace = True
@@ -32,8 +33,8 @@ debug_indent = Scope(__indent_plus, __indent_minus)
 
 def debug_print(msg, *args, **kwargs):
     global debug_indent_sym, debug_indent_level
-    print debug_indent_sym * debug_indent_level, \
-        msg.format(*args, **kwargs)
+    log("{}{}", debug_indent_sym * debug_indent_level, \
+            msg.format(*args, **kwargs))
 
 def parser(name):
     def mk_name(name):
@@ -41,12 +42,12 @@ def parser(name):
     def deco(fn):
         global is_parser_trace
         fn.__name__ = mk_name(name)
-        def wrapper(*args, **kwargs):
+        def wrapper(src):
             global debug_indent
-            debug_print("{}({}) {{", fn.__name__,
-                        printable_args(*args, **kwargs))
+            pr = src if len(src) < 20 else ''.join([str(src[:20]), '...'])
+            debug_print("{}({}) {{", fn.__name__, repr(pr))
             with debug_indent:
-                res = fn(*args, **kwargs)
+                res = fn(src)
             debug_print("}} => {}", printable_args(res))
             return res
         if is_parser_trace:
@@ -65,9 +66,7 @@ class InfiniteInput(object):
         self.__begin = begin
         self.__is_endless = end is None
         if end is None:
-            self._end = lambda : len(src)
-        elif callable(end):
-            self._end = end
+            self._end = lambda: len(src)
         else:
             self._end = lambda: end
 
