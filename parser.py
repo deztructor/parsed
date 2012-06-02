@@ -231,6 +231,13 @@ def _ne(name, test, conv):
         return (1, conv(src[0])) if res == nomatch else nomatch
     return fn
 
+def _lookup(name, test, conv):
+    @parser(name)
+    def fn(src):
+        res = test(src)
+        return nomatch if res == nomatch else (0, res[1])
+    return fn
+
 def is_str(c):
     return isinstance(c, str) or c == nomatch
 
@@ -241,6 +248,8 @@ class ParseInfo(tuple):
 def __mk_fn_parser(name, rule, action):
     fn, data = rule
     if not is_str(data):
+        if isinstance(data, ParseInfo):
+            data = mk_parser(data)
         if is_iterable(data):
             data = [mk_parser(x) for x in data]
         else:
@@ -294,3 +303,9 @@ def eof():
 def sym(c): return ParseInfo(_match_symbol, c) \
         if c == nomatch or len(c) == 1 \
         else ParseInfo(_match_iterable, c)
+
+def lookup(rule):
+    def rule_fn():
+        return ParseInfo(_lookup, rule), ignore
+    rule_fn.__name__ = '_'.join(['lookup', parser.__name__])
+    return rule_fn
