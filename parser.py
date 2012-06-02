@@ -74,9 +74,13 @@ class InfiniteInput(object):
         start, stop = k.start, k.stop
         if not (k.step is None or k.step == 1):
             raise Err("Can't handle step != 1")
-        start = self.__begin if start is None else self.__begin + start
-        end = self._end if stop is None else self.__begin + stop
-        return InfiniteInput(self.__s, start, end)
+        if start is None:
+            start = self.__begin
+        else:
+            start = min(self.__begin + start, len(self.__s))
+        if not stop is None:
+            stop = min(self.__begin + stop, len(self.__s))
+        return InfiniteInput(self.__s, start, stop)
 
     def __getitem__(self, i):
         if isinstance(i, slice):
