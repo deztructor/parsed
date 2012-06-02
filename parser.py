@@ -41,10 +41,11 @@ def parser(name):
         fn.__name__ = name
         def wrapper(*args, **kwargs):
             global debug_indent
-            debug_print("G:{}({}, {}) {{", fn.__name__, args, kwargs)
+            debug_print("{}({}) {{", fn.__name__,
+                        printable_args(*args, **kwargs))
             with debug_indent:
                 res = fn(*args, **kwargs)
-            debug_print("}} => {}", res)
+            debug_print("}} => {}", printable_args(res))
             return res
         if is_parser_trace:
             wrapper.__name__ = name

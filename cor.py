@@ -60,14 +60,17 @@ def __traceback():
 
 log.traceback = __traceback
 
+def printable_args(*args, **kwargs):
+    arglist = [repr(x) for x in args] \
+        + ['='.join([repr(k), repr(v)]) for k, v in kwargs]
+    return ', '.join(arglist)
+
 def track(fn):
     def wrapper(*args, **kwargs):
-        arglist = [str(x) for x in args] \
-            + ['='.join([str(k), str(v)]) for k, v in kwargs]
-        log("{}({})", fn.__name__, ','.join(arglist))
+        log("{}({})", fn.__name__, printable_args(*args, **kwargs))
         log.traceback()
         res = fn(*args, **kwargs)
-        log("=> {}", res)
+        log("=> {}", printable_args(res))
         return res
 
     wrapper.__name__ = fn.__name__
