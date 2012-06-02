@@ -6,6 +6,7 @@
 
 import collections
 import traceback
+import sys
 
 def is_iterable(v):
     return isinstance(v, collections.Iterable)
@@ -51,7 +52,7 @@ class Err(Exception):
         super(Err, self).__init__(msg.format(*args, **kwargs))
 
 def log(msg, *args, **kwargs):
-    print msg.format(*args, **kwargs)
+    print >>sys.stderr, msg.format(*args, **kwargs)
 
 def __traceback():
     t = traceback.format_exc().strip()
@@ -67,7 +68,13 @@ def printable_args(*args, **kwargs):
 
 def track(fn):
     def wrapper(*args, **kwargs):
-        log("{}({})", fn.__name__, printable_args(*args, **kwargs))
+        if len(args) and fn.__name__ == '__init__':
+            pr = args[1:]
+            name = args[0].__class__.__name__
+        else:
+            pr = args
+            name = fn.__name__
+        log("{}({})", name, printable_args(*pr, **kwargs))
         log.traceback()
         res = fn(*args, **kwargs)
         log("=> {}", printable_args(res))
@@ -78,7 +85,7 @@ def track(fn):
     wrapper.__dict__.update(fn.__dict__)
     return wrapper
 
-def integers(start):
+def integers(start = 0):
     i = start
     while True:
         yield i
@@ -99,3 +106,6 @@ def unescape(c):
 
 def escape(c):
     return ''.join(['\\', __escape[c]]) if (c in __escape) else c
+
+def wrap(wrapper, s):
+    return ''.join([wrapper, s, wrapper])
