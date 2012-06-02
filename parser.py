@@ -6,11 +6,11 @@
 
 from cor import *
 
-nomatch = Null()
+nomatch = const('nomatch')
 empty = const('empty')
 end = const('end')
 
-def ignore(x): return empty
+def ignore(*x): return empty
 def value(x): return x
 def first(x): return x[0]
 second = nth(1)
