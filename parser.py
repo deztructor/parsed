@@ -17,7 +17,7 @@ second = nth(1)
 third = nth(2)
 def list2str(x): return ''.join(x)
 
-is_parser_trace = True
+is_parser_trace = False
 debug_indent_level = 0
 debug_indent_sym = '  '
 
@@ -142,7 +142,6 @@ def _match(name, s, conv):
     if (is_str(s) or s == nomatch):
         return cmp_sym
     elif callable(s):
-        print "d"
         return cmp_fn
     raise Err("Don't know how to match with {}", s)
 
@@ -287,7 +286,7 @@ def __mk_fn_parser(cache, name, rule, action):
     elif isinstance(data, ParseInfo):
         data = __mk_parser(data, cache, data.name)
     elif is_iterable(data):
-        data = [__mk_parser(x, cache, name + mk_name()) for x in data]
+        data = [__mk_parser(x, cache, mk_name()) for x in data]
     else:
         data = __mk_parser(data, cache, name)
 
@@ -301,7 +300,7 @@ def __extract_rule(entity):
     else:
         return nomatch
 
-def __extract_rule_action(data, cache, name = "?"):
+def __extract_rule_action(data, name):
     res = __extract_rule(data)
     if res != nomatch:
         return name, res, res.action
@@ -321,7 +320,7 @@ class Forward(object):
         return self.fn(*args, **kwargs)
 
 def __mk_parser(top, cache, name):
-    extracted = __extract_rule_action(top, cache, name)
+    extracted = __extract_rule_action(top, name)
     if extracted is None:
         if top in cache:
             return cache[top]

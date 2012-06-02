@@ -1,10 +1,8 @@
-#/usr/bin/python
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 # Copyright (c) 2012 Denis Zalevskiy
 # Licensed under MIT License
-
-import string
 
 from parser import *
 from common import *
@@ -36,8 +34,6 @@ def dquoted_str(): return seq('"', str_chrs, '"'), first
 def quoted(): return seq("'", atom), lambda x: ["'", x[0]]
 def unit(): return seq(number, '~', name), lambda x: [x[1], x[0]]
 
-#, keyword, unit, quoted, number,
-#                               name, dquoted_str, 
 def atom_body(): return choice(keyword, unit, quoted, number, name,
                                dquoted_str, alist), value
 def atom_end(): return choice(space, ')', eol), ignore
@@ -45,13 +41,21 @@ def atom(): return seq(spaces, atom_body, lookup(atom_end)), first
 def comment(): return seq(';', r0_inf(ne(eol)), eol),\
         lambda x: list2str(x[0])
 def alist(): return seq('(', r1_inf(atom), ')'), first
-def alist_or_comment(): return choice(comment, alist), value
+def alist_or_comment(): return choice(comment, alist, atom), value
 def grammar(): return r0_inf(alist_or_comment), value
 
 def test_str(): return seq(spaces, dquoted_str), first
 
-p = mk_parser(grammar)
-print p(source('(34 -3 1 1.3 2 #f);ee'))
+p = mk_parser(alist_or_comment)
+s = source('(34 ;ee\n-3 1 1.3 2 #f);ee')
+pos = 0
+while pos < len(s):
+    res = p(s[pos:])
+    if res == nomatch:
+        break
+    dpos, data = res
+    pos += dpos
+    print pos, data
 
 #p2 = mk_parser(test_str)
 #print p2(source(' "\e ter"'))
