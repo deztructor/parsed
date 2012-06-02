@@ -128,11 +128,26 @@ def source(src, begin = 0, end = None):
     return InfiniteInput(src, begin, end)
 
 def _match(name, s, conv):
+
     @parser(name)
-    def fn(src):
+    def cmp_sym(src):
         v = src[0]
         return (1, conv(v)) if v == s else nomatch
-    return fn
+
+    @parser(name)
+    def cmp_fn(src):
+        v = src[0]
+        return (1, conv(v)) if s(v) else nomatch
+
+    if (is_str(s) or s == nomatch):
+        return cmp_sym
+    elif callable(s):
+        print "d"
+        return cmp_fn
+    raise Err("Don't know how to match with {}", s)
+
+def _match_cond(c):
+    return lambda name, dummy, action: _match(name, c, action)
 
 def _match_symbol(name, s, conv):
     if isinstance(s, str):
@@ -224,7 +239,7 @@ def _0_1(name, test, conv):
     def fn(src):
         pos = 0
         res = test(src)
-        return res[0], conv(res[1]) if res != nomatch else (0, empty)
+        return (0, conv(empty)) if res == nomatch else (res[0], conv(res[1]))
     return fn
 
 def _ne(name, test, conv):
@@ -244,20 +259,38 @@ def _lookup(name, test, conv):
 def is_str(c):
     return isinstance(c, str) or c == nomatch
 
-class ParseInfo(tuple):
-    def __new__(cls, *args):
-        return tuple.__new__(cls, args)
+class ParseInfo(object):
+    def __init__(self, fn, data, action):
+        self.fn = fn
+        self.data = data
+        self.action = action
 
+    @property
+    def name(self):
+        return self.fn.__name__
 
-def __mk_fn_parser(name, rule, action):
-    fn, data = rule
-    if not is_str(data):
-        if isinstance(data, ParseInfo):
-            data = mk_parser(data)
-        if is_iterable(data):
-            data = [mk_parser(x) for x in data]
-        else:
-            data = mk_parser(data)
+    def __repr__(self):
+        args = printable_args(self.fn, self.data, self.action)
+        return ''.join(['ParseInfo(', args, ')'])
+
+def __mk_fn_parser(cache, name, rule, action):
+    if not isinstance(rule, ParseInfo):
+        raise Err("Rule is not ParseInfo but {}", rule)
+    fn, data = rule.fn, rule.data
+    idx = integers()
+    def mk_name():
+        return '_'.join([name, str(idx.next())])
+
+    if is_str(data):
+        if not len(name):
+            name = wrap('"', data)
+    elif isinstance(data, ParseInfo):
+        data = __mk_parser(data, cache, data.name)
+    elif is_iterable(data):
+        data = [__mk_parser(x, cache, name + mk_name()) for x in data]
+    else:
+        data = __mk_parser(data, cache, name)
+
     return fn(name, data, action)
 
 def __extract_rule(entity):
@@ -268,32 +301,51 @@ def __extract_rule(entity):
     else:
         return nomatch
 
-def __extract_rule_action(data, name = "?"):
+def __extract_rule_action(data, cache, name = "?"):
     res = __extract_rule(data)
     if res != nomatch:
-        return name, res, value
+        return name, res, res.action
     elif is_iterable(data) and len(data) == 2:
         res = __extract_rule(data[0])
         if res != nomatch:
             return name, res, data[1]
     elif callable(data):
-        return __extract_rule_action(data(), data.__name__)
+        return None
 
     raise Err("Don't know how to extract from {}", data)
 
-def __mk_parser(name, rule, action):
-    if isinstance(rule, ParseInfo):
-        return __mk_fn_parser(name, rule, action)
+class Forward(object):
+    def __init__(self):
+        pass
+    def __call__(self, *args, **kwargs):
+        return self.fn(*args, **kwargs)
 
-    raise Err("Do not know what to do with {}", rule)
+def __mk_parser(top, cache, name):
+    extracted = __extract_rule_action(top, cache, name)
+    if extracted is None:
+        if top in cache:
+            return cache[top]
+        f = Forward()
+        cache[top] = f
+        extracted = __extract_rule_action(top(), top.__name__)
+        res = __mk_fn_parser(cache, *extracted)
+        f.fn = res
+        return res
+    else:
+        return __mk_fn_parser(cache, *extracted)
 
 
 def mk_parser(top, name = ""):
-    return __mk_parser(*__extract_rule_action(top, name))
+    cache = {}
+    return __mk_parser(top, cache, name)
 
 def __normalize(v):
     if callable(v):
         return v
+    if isinstance(v, ParseInfo):
+        res = lambda: v
+        res.__name__ = v.name
+        return res
     if is_str(v):
         fn = lambda: (v, value)
         fn.__name__ = ''.join(('!', v))
@@ -302,25 +354,33 @@ def __normalize(v):
 
 
 def r0_inf(test):
-    return ParseInfo(_zero_more, __normalize(test))
+    return ParseInfo(_zero_more, __normalize(test), value)
 def r0_1(test):
-    return ParseInfo(_0_1, __normalize(test))
+    return ParseInfo(_0_1, __normalize(test), value)
 def r1_inf(test):
-    return ParseInfo(_one_more, __normalize(test))
+    return ParseInfo(_one_more, __normalize(test), value)
 def seq(*tests):
-    return ParseInfo(_match_seq, tests)
+    return ParseInfo(_match_seq, tests, value)
 def choice(*tests):
-    return ParseInfo(_match_any, tests)
+    return ParseInfo(_match_any, tests, value)
 def ne(test):
-    return ParseInfo(_ne, __normalize(test))
+    return ParseInfo(_ne, __normalize(test), value)
 def eof():
     return nomatch, ignore
-def sym(c): return ParseInfo(_match_symbol, c) \
-        if c == nomatch or len(c) == 1 \
-        else ParseInfo(_match_iterable, c)
+def sym(c):
+    if c == nomatch:
+        return ParseInfo(_match_symbol, c, ignore)
+    if is_iterable(c):
+        if len(c) == 1:
+            return ParseInfo(_match_symbol, c, ignore)
+        else:
+            return ParseInfo(_match_iterable, c, value)
+    elif callable(c):
+        return ParseInfo(_match_cond(c), nomatch, value)
+    raise Err("Don't know how to make sym match from {}", c)
 
 def lookup(rule):
     def rule_fn():
-        return ParseInfo(_lookup, rule), ignore
+        return ParseInfo(_lookup, rule, ignore), ignore
     rule_fn.__name__ = '_'.join(['lookup', parser.__name__])
     return rule_fn
