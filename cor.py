@@ -88,3 +88,14 @@ def nth(idx):
     res = lambda x: x[idx]
     res.__name__ = '_'.join(['nth', str(idx)])
     return res
+
+__esc_data = (('"' ,  '"'), ( 'n' ,  '\n'),
+              ( 'r' ,  '\r'), ('t', '\t'))
+__escape = {k : v for v, k in __esc_data}
+__unescape = {k : v for k, v in __esc_data}
+
+def unescape(c):
+    return __unescape[c] if (c in __unescape) else c
+
+def escape(c):
+    return ''.join(['\\', __escape[c]]) if (c in __escape) else c
