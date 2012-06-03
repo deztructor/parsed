@@ -11,7 +11,7 @@ Writing parsers
 To create parser and use predefined rules one need to import parsed
 package.
 
-from parsed import *
+        from parsed import *
 
 Parser generator function accepts no parameters and is decorated by
 @rule, it should return a rule, e.g.:
@@ -34,21 +34,24 @@ it with the source() function.
 
 * against single char
 
-        char('A') # matches against 'A', on match by default
-        #skips/ignores it
+        #matches against 'A', on match by default skips/ignores it
+        def is_A(): char('A')
 
 * against char from iterable
 
-        char('\r\n') # matches against LF or CR, on match by default
-        #returns matched character
+        #matches against LF or CR, on match by default returns
+        #matched character
+        def vspace(): return char('\r\n')
 
 * against predicate
 
         import string
-        def is_punct(c): return c in string.punctuation
+        #predicate
+        def __is_punct(c): return c in string.punctuation
 
-        char(is_punct) #matches against predicate, on match by
-        #default returns the character
+        #matches against predicate, on match by default returns the
+        #character
+        def is_punctuation(): return char(__is_punct)
 
 #### Sequence
 
@@ -66,6 +69,11 @@ Short circuiting 'OR':
         @rule
         def a_quote(): return hashed_abc | 'abc'
 
+#### Negation
+
+        @rule
+        def not_a(): return ~char('a')
+
 #### Repetition
 
         @rule
@@ -76,3 +84,20 @@ Short circuiting 'OR':
 
         @rule
         def maybe_a(): return char('a')*(0,1)
+
+#### Forward lookup
+
+        @rule
+        def a_before_abc(): return char('a') + -char('abc')
+
+#### Parsing action
+
+        #extract a list of characters from double quoted string
+        #consisting from 'abc' characters
+
+        @rule
+        def dquoted_abc(): return '"' + char('abc')*(1,) + '"' > first
+
+        @rule
+        def abc_def(): return char('abc') + 'def' > (lambda x: first + second)
+
