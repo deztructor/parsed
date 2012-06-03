@@ -77,7 +77,7 @@ def track(fn):
         log("{}({})", name, printable_args(*pr, **kwargs))
         log.traceback()
         res = fn(*args, **kwargs)
-        log("=> {}", printable_args(res))
+        log("{} => {}", name, printable_args(res))
         return res
 
     wrapper.__name__ = fn.__name__
