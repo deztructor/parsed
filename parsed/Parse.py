@@ -8,7 +8,7 @@ import cor
 from cor import Err
 from Common import *
 
-is_parser_trace = True
+is_parser_trace = False
 debug_indent_level = 0
 debug_indent_sym = '  '
 
