@@ -4,9 +4,7 @@
 # Copyright (c) 2012 Denis Zalevskiy
 # Licensed under MIT License
 
-from rule import *
-from common import *
-import cor
+from parsed import *
 
 @rule
 def sign(): return char('+-')*(0, 1) > \

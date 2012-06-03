@@ -4,18 +4,8 @@
 # Copyright (c) 2012 Denis Zalevskiy
 # Licensed under MIT License
 
-from cor import *
-
-nomatch = const('nomatch')
-empty = const('empty')
-end = const('end')
-
-def ignore(*x): return empty
-def value(x): return x
-def first(x): return x[0]
-second = nth(1)
-third = nth(2)
-def list2str(x): return ''.join(x)
+from cor import is_iterable, log, printable_args, Scope, Err
+from Common import *
 
 is_parser_trace = True
 debug_indent_level = 0
@@ -38,7 +28,7 @@ def debug_print(msg, *args, **kwargs):
 
 def parser(name):
     def mk_name(name):
-        return ''.join(['?', name])
+        return ''.join([name, '?'])
     def deco(fn):
         global is_parser_trace
         fn.__name__ = mk_name(name)
@@ -124,9 +114,6 @@ class InfiniteInput(object):
             res.append(chr(0))
             return ''.join(res)
 
-def source(src, begin = 0, end = None):
-    return InfiniteInput(src, begin, end)
-
 def _match(name, s, conv):
 
     @parser(name)
@@ -151,14 +138,14 @@ def match_cond(c):
 def match_symbol(name, s, conv):
     if isinstance(s, str):
         if len(s) != 1:
-            raise Exception("len != 1")
+            raise Err("{} len != 1", s)
     elif s != nomatch:
-        raise Exception("Not a string")
+        raise Err("{} is not a string", s)
     return _match(name, s, conv)
 
 def match_string(name, s, conv):
     if not isinstance(s, str):
-        raise Exception("Not a string")
+        raise Err("{} is not a string", s)
     slen = len(s)
     @parser(name)
     def fn(src):
@@ -170,7 +157,7 @@ def match_string(name, s, conv):
 
 def match_iterable(name, pat, conv):
     if not is_iterable(pat):
-        raise Exception("Don't know what to do with {}".format(seq))
+        raise Err("Don't know what to do with {}", seq)
 
     seq = [x for x in pat] if isinstance(pat, str) else pat
     @parser(name)
@@ -254,13 +241,3 @@ def fwd_lookup(name, test, conv):
         res = test(src)
         return nomatch if res == nomatch else (0, res[1])
     return fn
-
-def is_str(c):
-    return isinstance(c, str) or c == nomatch
-
-
-class Forward(object):
-    def __init__(self):
-        pass
-    def __call__(self, *args, **kwargs):
-        return self.fn(*args, **kwargs)

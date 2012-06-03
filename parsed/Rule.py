@@ -4,10 +4,17 @@
 # Copyright (c) 2012 Denis Zalevskiy
 # Licensed under MIT License
 
-from parser import *
-from cor import *
+from Parse import *
+from cor import is_iterable, Err, integers
+from Common import *
 
 inf = const('inf')
+
+class Forward(object):
+    def __init__(self):
+        pass
+    def __call__(self, *args, **kwargs):
+        return self.fn(*args, **kwargs)
 
 class Rule(object):
 
@@ -131,7 +138,7 @@ class NotRule(Rule):
         super(NotRule, self).__init__(rule, name)
         self.fn = not_equal
         self.action = value
-        
+
     def __invert__(self):
         return self.data
 
@@ -182,7 +189,7 @@ class LookupRule(Rule):
         super(LookupRule, self).__init__(rule, name)
         self.fn = fwd_lookup
         self.action = ignore
-        
+
     def __neg__(self):
         return self
 
@@ -193,7 +200,7 @@ class ActiveRule(Rule):
             self.parser = rule.parser
         self.fn = rule.fn
         self.action = action
-        
+
     @property
     def active(self):
         return self
@@ -201,7 +208,3 @@ class ActiveRule(Rule):
     def __gt__(self, action):
         self.action = action
         return self
-
-def rule(fn): return TopRule(fn)
-def char(c): return CharRule(c)
-
