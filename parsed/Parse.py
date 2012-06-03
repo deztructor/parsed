@@ -203,7 +203,9 @@ def one_more(name, test, conv):
         if res == nomatch:
             return res
         while res != nomatch:
-            total.append(res[1])
+            data = res[1]
+            if data != empty:
+                total.append(data)
             pos += res[0]
             res = test(src[pos:])
         return pos, conv(total)
@@ -216,7 +218,9 @@ def zero_more(name, test, conv):
         pos = 0
         res = test(src)
         while res != nomatch:
-            total.append(res[1])
+            data = res[1]
+            if data != empty:
+                total.append(data)
             pos += res[0]
             res = test(src[pos:])
         return pos, conv(total)
@@ -227,7 +231,13 @@ def range_0_1(name, test, conv):
     def fn(src):
         pos = 0
         res = test(src)
-        return (0, conv(empty)) if res == nomatch else (res[0], conv(res[1]))
+        if res == nomatch:
+            return (0, conv(empty))
+        else:
+            data = res[1]
+            if data != empty:
+                data = conv(data)
+            return (res[0], data)
     return fn
 
 def not_equal(name, test, conv):
