@@ -145,7 +145,7 @@ class NotRule(Rule):
 
 class CharRule(Rule):
     def __init__(self, c, name = None):
-        if c == nomatch:
+        if c == empty:
             if name is None:
                 name = 'nomatch?'
             self.fn, self.action = match_symbol, ignore

@@ -18,4 +18,4 @@ third = nth(2)
 def list2str(x): return ''.join(x)
 
 def is_str(c):
-    return isinstance(c, str) or c == nomatch
+    return isinstance(c, str) or c == empty

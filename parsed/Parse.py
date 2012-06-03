@@ -82,9 +82,9 @@ class InfiniteInput(object):
         if i < end:
             return self.__s[i]
         elif i > self.len_limit:
-            raise Exception("Length limit is reached")
+            raise Err("Length limit is reached")
         else:
-            return nomatch
+            return empty
 
     def __str__(self):
         return str(self.__s[self.__begin:self._end()])
@@ -128,7 +128,7 @@ def _match(name, s, conv):
         v = src[0]
         return (1, conv(v)) if s(v) else nomatch
 
-    if (is_str(s) or s == nomatch):
+    if is_str(s):
         return cmp_sym
     elif callable(s):
         return cmp_fn
@@ -141,7 +141,7 @@ def match_symbol(name, s, conv):
     if isinstance(s, str):
         if len(s) != 1:
             raise Err("{} len != 1", s)
-    elif s != nomatch:
+    elif s != empty:
         raise Err("{} is not a string", s)
     return _match(name, s, conv)
 

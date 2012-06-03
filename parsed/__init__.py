@@ -23,7 +23,7 @@ def hspace(): return char(' \t') > ignore
 @rule
 def eol(): return eof | vspace > ignore
 @rule
-def eof(): return char(nomatch) > ignore
+def eof(): return char(empty) > ignore
 @rule
 def space(): return char(' \n\r\t') > ignore
 @rule
