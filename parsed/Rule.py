@@ -11,8 +11,9 @@ from Common import *
 inf = const('inf')
 
 class Forward(object):
-    def __init__(self):
-        pass
+    def __init__(self, name):
+        self.name = name
+
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
 
@@ -72,7 +73,7 @@ class Rule(object):
         if hasattr(self, 'parser'):
             return self.parser
 
-        self.parser = Forward()
+        self.parser = Forward(self.name)
 
         data = self.data
         if isinstance(data, Rule):
