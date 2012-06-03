@@ -187,7 +187,7 @@ class RangeRule(Rule):
 
 class LookupRule(Rule):
     def __init__(self, rule, name):
-        super(LookupRule, self).__init__(rule, name)
+        super(LookupRule, self).__init__(rule, '_'.join(['fwd', name]))
         self.fn = fwd_lookup
         self.action = ignore
 
