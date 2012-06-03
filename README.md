@@ -32,20 +32,47 @@ it with the source() function.
 
 #### Character matching rule
 
-Matches character against single character, set of characters passed
-in the string or predicate accepting character and returning True on
-matching. Examples are:
+* against single char
 
-* char('A') # matches against 'A', on match by default skips/ignores
-        it
+        char('A') # matches against 'A', on match by default
+        #skips/ignores it
 
-* char('\r\n') # matches against LF or CR, on match by default returns
-        matched character
+* against char from iterable
+
+        char('\r\n') # matches against LF or CR, on match by default
+        #returns matched character
 
 * against predicate
 
         import string
         def is_punct(c): return c in string.punctuation
 
-        char(is_punct) # matches against predicate, on match by
-        default returns the character
+        char(is_punct) #matches against predicate, on match by
+        #default returns the character
+
+#### Sequence
+
+Matching sequence of rules, using operator '+':
+
+        # matches '#' followed by char matching to any character in
+        # the 'abcABC' string
+        @rule
+        def hashed_abc(): return char('#') + 'abcABC'
+
+#### Choice
+
+Short circuiting 'OR':
+
+        @rule
+        def a_quote(): return hashed_abc | 'abc'
+
+#### Repetition
+
+        @rule
+        def one_or_more_a(): return char('a')*(1,)
+
+        @rule
+        def zero_or_more_a(): return char('a')*(0,)
+
+        @rule
+        def maybe_a(): return char('a')*(0,1)
