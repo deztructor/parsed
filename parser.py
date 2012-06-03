@@ -145,10 +145,10 @@ def _match(name, s, conv):
         return cmp_fn
     raise Err("Don't know how to match with {}", s)
 
-def _match_cond(c):
+def match_cond(c):
     return lambda name, dummy, action: _match(name, c, action)
 
-def _match_symbol(name, s, conv):
+def match_symbol(name, s, conv):
     if isinstance(s, str):
         if len(s) != 1:
             raise Exception("len != 1")
@@ -156,7 +156,7 @@ def _match_symbol(name, s, conv):
         raise Exception("Not a string")
     return _match(name, s, conv)
 
-def _match_string(name, s, conv):
+def match_string(name, s, conv):
     if not isinstance(s, str):
         raise Exception("Not a string")
     slen = len(s)
@@ -168,7 +168,7 @@ def _match_string(name, s, conv):
         return (slen, conv(v)) if v == s else nomatch
     return fn
 
-def _match_iterable(name, pat, conv):
+def match_iterable(name, pat, conv):
     if not is_iterable(pat):
         raise Exception("Don't know what to do with {}".format(seq))
 
@@ -179,7 +179,7 @@ def _match_iterable(name, pat, conv):
         return (1, conv(v)) if v in seq else nomatch
     return fn
 
-def _match_any(name, tests, conv):
+def match_any(name, tests, conv):
     @parser(name)
     def fn(src):
         for test in tests:
@@ -190,7 +190,7 @@ def _match_any(name, tests, conv):
         return nomatch
     return fn
 
-def _match_seq(name, tests, conv):
+def match_seq(name, tests, conv):
     @parser(name)
     def fn(src):
         total = []
@@ -205,7 +205,7 @@ def _match_seq(name, tests, conv):
         return pos, conv(total)
     return fn
 
-def _one_more(name, test, conv):
+def one_more(name, test, conv):
     @parser(name)
     def fn(src):
         total = []
@@ -220,7 +220,7 @@ def _one_more(name, test, conv):
         return pos, conv(total)
     return fn
 
-def _zero_more(name, test, conv):
+def zero_more(name, test, conv):
     @parser(name)
     def fn(src):
         total = []
@@ -233,7 +233,7 @@ def _zero_more(name, test, conv):
         return pos, conv(total)
     return fn
 
-def _0_1(name, test, conv):
+def range_0_1(name, test, conv):
     @parser(name)
     def fn(src):
         pos = 0
@@ -241,14 +241,14 @@ def _0_1(name, test, conv):
         return (0, conv(empty)) if res == nomatch else (res[0], conv(res[1]))
     return fn
 
-def _ne(name, test, conv):
+def not_equal(name, test, conv):
     @parser(name)
     def fn(src):
         res = test(src)
         return (1, conv(src[0])) if res == nomatch else nomatch
     return fn
 
-def _lookup(name, test, conv):
+def fwd_lookup(name, test, conv):
     @parser(name)
     def fn(src):
         res = test(src)
@@ -353,33 +353,33 @@ def __normalize(v):
 
 
 def r0_inf(test):
-    return ParseInfo(_zero_more, __normalize(test), value)
+    return ParseInfo(zero_more, __normalize(test), value)
 def r0_1(test):
-    return ParseInfo(_0_1, __normalize(test), value)
+    return ParseInfo(range_0_1, __normalize(test), value)
 def r1_inf(test):
-    return ParseInfo(_one_more, __normalize(test), value)
+    return ParseInfo(one_more, __normalize(test), value)
 def seq(*tests):
-    return ParseInfo(_match_seq, tests, value)
+    return ParseInfo(match_seq, tests, value)
 def choice(*tests):
-    return ParseInfo(_match_any, tests, value)
+    return ParseInfo(match_any, tests, value)
 def ne(test):
-    return ParseInfo(_ne, __normalize(test), value)
+    return ParseInfo(not_equal, __normalize(test), value)
 def eof():
     return nomatch, ignore
 def sym(c):
     if c == nomatch:
-        return ParseInfo(_match_symbol, c, ignore)
+        return ParseInfo(match_symbol, c, ignore)
     if is_iterable(c):
         if len(c) == 1:
-            return ParseInfo(_match_symbol, c, ignore)
+            return ParseInfo(match_symbol, c, ignore)
         else:
-            return ParseInfo(_match_iterable, c, value)
+            return ParseInfo(match_iterable, c, value)
     elif callable(c):
-        return ParseInfo(_match_cond(c), nomatch, value)
+        return ParseInfo(match_cond(c), nomatch, value)
     raise Err("Don't know how to make sym match from {}", c)
 
 def lookup(rule):
     def rule_fn():
-        return ParseInfo(_lookup, rule, ignore), ignore
+        return ParseInfo(fwd_lookup, rule, ignore), ignore
     rule_fn.__name__ = '_'.join(['lookup', parser.__name__])
     return rule_fn
