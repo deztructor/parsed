@@ -26,7 +26,9 @@ it with the source() function.
 
         parse = abc()
         src = source('a')
-        position, result = parse(src)
+        result = parse(src)
+        if result != nomatch:
+            position, data = result
 
 ### Rules
 
@@ -34,31 +36,33 @@ it with the source() function.
 
 * against single char
 
-        #matches against 'A', on match by default skips/ignores it
-        def is_A(): char('A')
+        #single char, ignore by default
+        @rule
+        def is_A(): return char('A')
 
 * against char from iterable
 
         #matches against LF or CR, on match by default returns
         #matched character
+        @rule
         def vspace(): return char('\r\n')
 
 * against predicate
 
         import string
-        #predicate
-        def __is_punct(c): return c in string.punctuation
 
-        #matches against predicate, on match by default returns the
-        #character
+        #boolean predicate to test a char for some condition
+        def __is_punct(c): return c in string.punctuation
+        
+        #any char matching predicate, return a value by default
+        @rule
         def is_punctuation(): return char(__is_punct)
 
 #### Sequence
 
 Matching sequence of rules, using operator '+':
 
-        # matches '#' followed by char matching to any character in
-        # the 'abcABC' string
+        #hash symbol('#'), followed by any 'abcABC'
         @rule
         def hashed_abc(): return char('#') + 'abcABC'
 
@@ -66,27 +70,34 @@ Matching sequence of rules, using operator '+':
 
 Short circuiting 'OR':
 
+        #hashed_abc from the example above OR any char from 'abc' set
         @rule
-        def a_quote(): return hashed_abc | 'abc'
+        def hashed_abc_or_abc(): return hashed_abc | 'abc'
 
 #### Negation
 
+        #any character except 'a'
         @rule
         def not_a(): return ~char('a')
 
 #### Repetition
 
+        #character 'a' repeated 1 or more times
         @rule
         def one_or_more_a(): return char('a')*(1,)
 
+        #character 'a' repeated 0 or more times
         @rule
         def zero_or_more_a(): return char('a')*(0,)
 
+        #character 'a' or its absence
         @rule
         def maybe_a(): return char('a')*(0,1)
 
 #### Forward lookup
 
+        #character 'a', matches only if followed by any character from 'abc'
+        #set, do not consume the following character
         @rule
         def a_before_abc(): return char('a') + -char('abc')
 
@@ -94,10 +105,40 @@ Short circuiting 'OR':
 
         #extract a list of characters from double quoted string
         #consisting from 'abc' characters
-
         @rule
         def dquoted_abc(): return '"' + char('abc')*(1,) + '"' > first
 
-        @rule
-        def abc_def(): return char('abc') + 'def' > (lambda x: first + second)
 
+        #compose 2 characters in string like "{CHAR1}&{CHAR2}" if first is
+        #from 'abc' set and second - from 'def'. lambda should be enclosed in
+        #braces because it has lowest precendence
+        @rule
+        def abc_def(): return char('abc') + 'def' > (lambda x: x[0] + '&' + x[1])
+
+#### Examples
+
+All examples above can be run and tested by running `examples/readmy.py`
+
+### Predefined rules
+
+TODO
+
+### Predefined constants
+
+        nomatch #means rule is not matched
+
+        empty #end of input (eof) or ignored result
+
+TODO
+
+### Predefined actions
+
+        list2str #string from list
+
+        first, second #first/second element of list
+
+        nth(N) #returns action extracting Nth list element
+
+        ignore #return empty constant
+
+TODO
