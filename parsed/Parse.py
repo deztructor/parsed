@@ -251,5 +251,5 @@ def fwd_lookup(name, test, conv):
     @parser(name)
     def fn(src):
         res = test(src)
-        return nomatch if res == nomatch else (0, res[1])
+        return nomatch if res == nomatch else (0, conv(res[1]))
     return fn
