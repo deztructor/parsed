@@ -4,7 +4,8 @@
 # Copyright (c) 2012 Denis Zalevskiy
 # Licensed under MIT License
 
-from cor import is_iterable, log, printable_args, Scope, Err
+import cor
+from cor import Err
 from Common import *
 
 is_parser_trace = True
@@ -19,11 +20,11 @@ def __indent_minus(*args):
     global debug_indent_level
     debug_indent_level -= 1
 
-debug_indent = Scope(__indent_plus, __indent_minus)
+debug_indent = cor.Scope(__indent_plus, __indent_minus)
 
 def debug_print(msg, *args, **kwargs):
     global debug_indent_sym, debug_indent_level
-    log("{}{}", debug_indent_sym * debug_indent_level, \
+    cor.log("{}{}", debug_indent_sym * debug_indent_level, \
             msg.format(*args, **kwargs))
 
 def parser(name):
@@ -35,10 +36,11 @@ def parser(name):
         def wrapper(src):
             global debug_indent
             pr = src if len(src) < 20 else ''.join([str(src[:20]), '...'])
-            debug_print("{}({}) {{", fn.__name__, repr(pr))
+            pr = cor.escape_str(pr)
+            debug_print("{}({}) {{", fn.__name__, cor.wrap('"',pr))
             with debug_indent:
                 res = fn(src)
-            debug_print("}} => {}", printable_args(res))
+            debug_print("}} => {}", cor.printable_args(res))
             return res
         if is_parser_trace:
             wrapper.__name__ = mk_name(name)
@@ -63,7 +65,7 @@ class InfiniteInput(object):
     def __get_slice(self, k):
         start, stop = k.start, k.stop
         if not (k.step is None or k.step == 1):
-            raise Err("Can't handle step != 1")
+            raise cor.Err("Can't handle step != 1")
         if start is None:
             start = self.__begin
         else:
@@ -156,7 +158,7 @@ def match_string(name, s, conv):
     return fn
 
 def match_iterable(name, pat, conv):
-    if not is_iterable(pat):
+    if not cor.is_iterable(pat):
         raise Err("Don't know what to do with {}", seq)
 
     seq = [x for x in pat] if isinstance(pat, str) else pat

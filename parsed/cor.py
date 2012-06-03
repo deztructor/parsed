@@ -107,5 +107,8 @@ def unescape(c):
 def escape(c):
     return ''.join(['\\', __escape[c]]) if (c in __escape) else c
 
+def escape_str(s):
+    return ''.join([escape(c) for c in s])
+
 def wrap(wrapper, s):
     return ''.join([wrapper, s, wrapper])
