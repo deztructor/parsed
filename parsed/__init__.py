@@ -27,7 +27,7 @@ def eof(): return char(empty) > ignore
 @rule
 def space(): return char(' \n\r\t') > ignore
 @rule
-def spaces(): return space*(0,) > ignore
+def spaces(): return space[0:] > ignore
 @rule
 def any_char(): return ~eof > value
 @rule

@@ -53,12 +53,15 @@ class Rule(object):
             other = CharRule(other)
         return ChoiceRule((other, self.active), self._next_child_name)
 
-    def __mul__(self, m):
-        if not isinstance(m, tuple):
-            raise Err("Need tuple (from,) or (from, to), got {}", m)
-        if len(m) == 1:
-            m = (m[0], inf)
-        return RangeRule(self.active, m, self._next_child_name)
+    def __getitem__(self, k):
+        if not isinstance(k, slice):
+            raise Err("Supports only slices now")
+        if not (k.step is None or k.step == 1):
+            raise cor.Err("Can't handle step != 1")
+        start, stop = k.start, k.stop
+        r = (0 if start is None else start,
+             inf if stop is None else stop)
+        return RangeRule(self.active, r, self._next_child_name)
 
     def __gt__(self, action):
         return ActiveRule(self, action)

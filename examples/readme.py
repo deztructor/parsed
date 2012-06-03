@@ -86,7 +86,7 @@ test_parser(not_a, 'ab')
 
 #character 'a' repeated 1 or more times
 @rule
-def one_or_more_a(): return char('a')*(1,)
+def one_or_more_a(): return char('a')[1:]
 
 test_parser(one_or_more_a, 'aaaba')
 test_parser(one_or_more_a, 'abbaa')
@@ -94,7 +94,7 @@ test_parser(one_or_more_a, 'baaaa')
 
 #character 'a' repeated 0 or more times
 @rule
-def zero_or_more_a(): return char('a')*(0,)
+def zero_or_more_a(): return char('a')[0:]
 
 test_parser(zero_or_more_a, 'baa')
 test_parser(zero_or_more_a, 'aba')
@@ -102,7 +102,7 @@ test_parser(zero_or_more_a, 'aab')
 
 #character 'a' or its absence
 @rule
-def maybe_a(): return char('a')*(0,1)
+def maybe_a(): return char('a')[0:1]
 
 test_parser(maybe_a, 'b')
 test_parser(maybe_a, 'aa')
@@ -124,7 +124,7 @@ test_parser(a_before_abc, 'ab')
 #extract a list of characters from double quoted string
 #consisting from 'abc' characters
 @rule
-def dquoted_abc(): return '"' + char('abc')*(1,) + '"' > first
+def dquoted_abc(): return '"' + char('abc')[1:] + '"' > first
 
 test_parser(dquoted_abc, '"aabbcc"')
 test_parser(dquoted_abc, '"bac"')

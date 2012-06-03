@@ -84,15 +84,15 @@ Short circuiting 'OR':
 
         #character 'a' repeated 1 or more times
         @rule
-        def one_or_more_a(): return char('a')*(1,)
+        def one_or_more_a(): return char('a')[1:]
 
         #character 'a' repeated 0 or more times
         @rule
-        def zero_or_more_a(): return char('a')*(0,)
+        def zero_or_more_a(): return char('a')[0:]
 
         #character 'a' or its absence
         @rule
-        def maybe_a(): return char('a')*(0,1)
+        def maybe_a(): return char('a')[0:1]
 
 #### Forward lookup
 
@@ -106,7 +106,7 @@ Short circuiting 'OR':
         #extract a list of characters from double quoted string
         #consisting from 'abc' characters
         @rule
-        def dquoted_abc(): return '"' + char('abc')*(1,) + '"' > first
+        def dquoted_abc(): return '"' + char('abc')[1:] + '"' > first
 
 
         #compose 2 characters in string like "{CHAR1}&{CHAR2}" if first is
