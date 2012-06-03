@@ -95,11 +95,11 @@ class InfiniteInput(object):
 
     def __iter__(self):
         def gen():
-            pos = self.__begin
-            while pos != self._end():
+            pos = 0
+            while pos < len(self):
                 yield self[pos]
                 pos += 1
-        return gen
+        return gen()
 
     def as_string(self):
         if isinstance(self.__s, str):
