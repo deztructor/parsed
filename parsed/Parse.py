@@ -247,7 +247,7 @@ def not_equal(name, test, conv):
         return (1, conv(src[0])) if res == nomatch else nomatch
     return fn
 
-def fwd_lookup(name, test, conv):
+def lookahead(name, test, conv):
     @parser(name)
     def fn(src):
         res = test(src)

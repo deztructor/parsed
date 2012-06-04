@@ -53,7 +53,7 @@ def atom_body(): return keyword | unit | quoted | number | \
 @rule
 def atom_end(): return space | ')' | ';' | eol > ignore
 @rule
-def atom(): return spaces + atom_body + -atom_end > first
+def atom(): return spaces + atom_body & atom_end > first
 @rule
 def comment(): return ';' + ~eol[0:] + eol >\
         (lambda x: list2str(x[0]))

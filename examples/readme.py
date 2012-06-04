@@ -11,8 +11,11 @@ from parsed import *
 #using to test and see how parser works
 def test_parser(generator, src_str):
     parse = generator()
+    print "Using", parse.__name__
+    print "Parsing:", repr(src_str)
     src = source(src_str)
     print "GOT:", parse(src)
+    print
 
 #basic parser generator function, on parsing tracking will be reported
 #as 'abc?'
@@ -108,15 +111,23 @@ test_parser(maybe_a, 'b')
 test_parser(maybe_a, 'aa')
 
 
-#### Forward lookup
+#### Lookahead
 
 #character 'a', matches only if followed by any character from 'abc'
 #set, do not consume the following character
 @rule
 def a_before_abc(): return char('a') + -char('abc')
 
+#the same as above
+@rule
+def also_a_before_abc(): return char('a') & char('abc')
+
 test_parser(a_before_abc, 'aa')
+test_parser(also_a_before_abc, 'aa')
+
 test_parser(a_before_abc, 'ab')
+test_parser(also_a_before_abc, 'aa')
+
 
 
 #### Parsing action
@@ -139,3 +150,10 @@ def abc_def(): return char('abc') + 'def' > (lambda x: x[0] + '&' + x[1])
 
 test_parser(abc_def, 'af')
 test_parser(abc_def, 'ab')
+
+#lookahead result can be also included in parsing results if
+#lookahead declared using prefix '-' but not binary '&'
+@rule
+def a_before_abc(): return char('a') + (-char('abc') > value)
+
+test_parser(a_before_abc, 'ab')

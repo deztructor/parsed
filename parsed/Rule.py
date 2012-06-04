@@ -17,6 +17,32 @@ class Forward(object):
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
 
+def mk_rule(src):
+    if isinstance(src, Rule):
+        return src
+    if is_str(src):
+        return CharRule(src)
+    raise Err("Can't make rule from {}", src)
+
+def mk_rule_seq(r1, r2, name):
+    r1 = mk_rule(r1)
+    r2 = mk_rule(r2)
+    return SeqRule((r1.active, r2.active), name)
+
+def mk_rule_lookahead(r):
+    r = mk_rule(r)
+    return LookaheadRule(r, r.name)
+
+def mk_rule_seq_lookahead(r1, r2, name):
+    r1 = mk_rule(r1)
+    r2 = mk_rule_lookahead(r2)
+    return SeqRule((r1.active, r2.active), name)
+
+def mk_rule_choice(r1, r2, name):
+    r1 = mk_rule(r1)
+    r2 = mk_rule(r2)
+    return ChoiceRule((r1.active, r2.active), name)
+
 class Rule(object):
 
     def __init__(self, data, name):
@@ -32,26 +58,24 @@ class Rule(object):
         return '_'.join([self.name, str(self.__integers.next())])
 
     def __add__(self, other):
-        if is_str(other):
-            other = CharRule(other)
-        return SeqRule((self.active, other), self._next_child_name)
+        return mk_rule_seq(self, other, self._next_child_name)
 
     def __radd__(self, other):
-        if is_str(other):
-            other = CharRule(other)
-        elif is_iterable(other):
+        if not is_str(other) and is_iterable(other):
             return other.__add__((self,))
-        return SeqRule((other, self.active), self._next_child_name)
+        return mk_rule_seq(other, self, self._next_child_name)
 
     def __or__(self, other):
-        if is_str(other):
-            other = CharRule(other)
-        return ChoiceRule((self.active, other), self._next_child_name)
+        return mk_rule_choice(self, other, self._next_child_name)
 
     def __ror__(self, other):
-        if is_str(other):
-            other = CharRule(other)
-        return ChoiceRule((other, self.active), self._next_child_name)
+        return mk_rule_choice(other, self, self._next_child_name)
+
+    def __and__(self, other):
+        return mk_rule_seq_lookahead(self, other, self._next_child_name)
+
+    def __rand__(self, other):
+        return mk_rule_seq_lookahead(other, self, self._next_child_name)
 
     def __getitem__(self, k):
         if not isinstance(k, slice):
@@ -67,7 +91,7 @@ class Rule(object):
         return ActiveRule(self, action)
 
     def __neg__(self):
-        return LookupRule(self, self.name)
+        return LookaheadRule(self, self.name)
 
     def __invert__(self):
         return NotRule(self, ''.join(['~', self.name]))
@@ -110,15 +134,17 @@ class SeqRule(Rule):
         self.action = value
 
     def __add__(self, other):
-        if is_str(other):
-            other = CharRule(other)
-        return SeqRule(self.data + (other,), self.name)
+        return SeqRule(self.data + (mk_rule(other),), self.name)
 
     def __radd__(self, other):
-        if is_str(other):
-            other = CharRule(other)
-        elif is_iterable(other):
-            return other.__add__((self,))
+        return SeqRule((mk_rule(other),) + self.data, self.name)
+
+    def __and__(self, other):
+        other = mk_rule_lookahead(other)
+        return SeqRule(self.data + (other,), self.name)
+
+    def __rand__(self, other):
+        other = mk_rule_lookahead(other)
         return SeqRule((other,) + self.data, self.name)
 
 class ChoiceRule(Rule):
@@ -128,14 +154,10 @@ class ChoiceRule(Rule):
         self.action = value
 
     def __or__(self, other):
-        if is_str(other):
-            other = CharRule(other)
-        return ChoiceRule(self.data + (other,), self.name)
+        return ChoiceRule(self.data + (mk_rule(other),), self.name)
 
     def __ror__(self, other):
-        if is_str(other):
-            other = CharRule(other)
-        return ChoiceRule((other,) + self.data, self.name)
+        return ChoiceRule((mk_rule(other),) + self.data, self.name)
 
 class NotRule(Rule):
     def __init__(self, rule, name):
@@ -188,10 +210,10 @@ class RangeRule(Rule):
         else:
             err()
 
-class LookupRule(Rule):
+class LookaheadRule(Rule):
     def __init__(self, rule, name):
-        super(LookupRule, self).__init__(rule, '_'.join(['fwd', name]))
-        self.fn = fwd_lookup
+        super(LookaheadRule, self).__init__(rule, '_'.join(['fwd', name]))
+        self.fn = lookahead
         self.action = ignore
 
     def __neg__(self):
