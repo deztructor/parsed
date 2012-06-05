@@ -27,7 +27,7 @@ def mk_rule(src):
 def mk_rule_seq(r1, r2, name):
     r1 = mk_rule(r1)
     r2 = mk_rule(r2)
-    return SeqRule((r1.active, r2.active), name)
+    return SeqRule((r1, r2), name)
 
 def mk_rule_lookahead(r):
     r = mk_rule(r)
@@ -36,16 +36,17 @@ def mk_rule_lookahead(r):
 def mk_rule_seq_lookahead(r1, r2, name):
     r1 = mk_rule(r1)
     r2 = mk_rule_lookahead(r2)
-    return SeqRule((r1.active, r2.active), name)
+    return SeqRule((r1, r2), name)
 
 def mk_rule_choice(r1, r2, name):
     r1 = mk_rule(r1)
     r2 = mk_rule(r2)
-    return ChoiceRule((r1.active, r2.active), name)
+    return ChoiceRule((r1, r2), name)
 
 class Rule(object):
 
     def __init__(self, data, name):
+        self.parser = None
         self.data = data
         self.name = name
         self.__integers = integers()
@@ -85,10 +86,11 @@ class Rule(object):
         start, stop = k.start, k.stop
         r = (0 if start is None else start,
              inf if stop is None else stop)
-        return RangeRule(self.active, r, self._next_child_name)
+        return RangeRule(self, r, self._next_child_name)
 
     def __gt__(self, action):
-        return ActiveRule(self, action)
+        self.action = action
+        return self
 
     def __neg__(self):
         return LookaheadRule(self, self.name)
@@ -97,7 +99,7 @@ class Rule(object):
         return NotRule(self, ''.join(['~', self.name]))
 
     def __call__(self):
-        if hasattr(self, 'parser'):
+        if self.parser:
             return self.parser
 
         self.parser = Forward(self.name)
@@ -111,10 +113,6 @@ class Rule(object):
         self.parser.fn = parser
         self.parser = parser
         return parser
-
-    @property
-    def active(self):
-        return ActiveRule(self, self.action)
 
 class TopRule(Rule):
     def __init__(self, fn):
@@ -225,20 +223,4 @@ class LookaheadRule(Rule):
         self.action = ignore
 
     def __neg__(self):
-        return self
-
-class ActiveRule(Rule):
-    def __init__(self, rule, action):
-        super(ActiveRule, self).__init__(rule.data, rule.name)
-        if hasattr(rule, 'parser'):
-            self.parser = rule.parser
-        self.fn = rule.fn
-        self.action = action
-
-    @property
-    def active(self):
-        return self
-
-    def __gt__(self, action):
-        self.action = action
         return self
