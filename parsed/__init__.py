@@ -39,4 +39,5 @@ def digit_hex() : return char('0123456789ABCDEFabcdef') > value
 def __is_ascii(s): return s in string.ascii_letters
 @rule
 def ascii(): return char(__is_ascii) > value
-
+@rule
+def ascii_digit(): return ascii | digit_dec
