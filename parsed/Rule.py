@@ -168,6 +168,14 @@ class NotRule(Rule):
     def __invert__(self):
         return self.data
 
+class StringRule(Rule):
+    def __init__(self, s, name = None):
+        if name is None:
+            name = ''.join(['str("', s, '")'])
+        self.fn = match_string
+        self.action = value
+        super(StringRule, self).__init__(s, name)
+
 class CharRule(Rule):
     def __init__(self, c, name = None):
         if c == empty:
