@@ -12,7 +12,7 @@ inf = const('inf')
 
 class Forward(object):
     def __init__(self, name):
-        self.name = name
+        self.name = ''.join(['>', name])
 
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
