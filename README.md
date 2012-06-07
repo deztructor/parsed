@@ -1,12 +1,23 @@
 parsed
 ======
 
-Simple parser builder written on Python. Inspired by arpeggio parser
-(http://arpeggio.googlecode.com/) but it was not suitable for my needs
-and taste so it was simplier to write own parser generator.
+Simple PEG parser builder written on Python.
 
-Writing parsers
----------------
+There are many parser generators for python but each of 'em has IMO
+some disadvantages: e.g. not suitable for stream processing, or does
+not allow to track parsing and understand where it was failed, or does
+not support mode w/o skipping whitespaces, or has ugly rules syntax,
+or does not allow to attach semantic action in-place...
+
+"Parsed" is inspired by "arpeggio"
+(http://arpeggio.googlecode.com/). This parser generator is
+interesting and there was the chance I'll start to use it but...
+maybe I am too lazy to study the code and modify it to correspond my
+needs or, most probably, it is interesting to write own parser...  so
+I wrote One More parser generator.
+
+Writing new grammar parsers
+---------------------------
 
 To create parser and use predefined rules one need to import parsed
 package.
@@ -53,7 +64,7 @@ it with the source() function.
 
         #boolean predicate to test a char for some condition
         def __is_punct(c): return c in string.punctuation
-        
+
         #any char matching predicate, return a value by default
         @rule
         def is_punctuation(): return char(__is_punct)
@@ -109,7 +120,7 @@ rule or by appending rule to sequence using bitwise AND ('&') operator.
         @rule
         def also_a_before_abc(): return char('a') & char('abc')
 
-#### Parsing action
+#### Parsing (semantic) action
 
         #extract a list of characters from double quoted string
         #consisting from 'abc' characters
@@ -155,3 +166,19 @@ TODO
         ignore #return empty constant
 
 TODO
+
+### Parsing options
+
+Now there is only one parser debugging option avaiable -- 'is_trace',
+if it is set to True, parsing process will be traced into stderr.
+
+What's next?
+------------
+
+* add option to ignore whitespaces
+
+* add Abstract Syntax Tree visualization
+
+* parser optimization
+
+* ?..

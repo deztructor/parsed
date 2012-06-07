@@ -43,6 +43,12 @@ def mk_rule_choice(r1, r2, name):
     r2 = mk_rule(r2)
     return ChoiceRule((r1, r2), name)
 
+def _mk_parser(name, generator, action, options):
+    rule = generator()
+    rule.name = name
+    parser = rule(options)
+    return parser
+
 class Rule(object):
 
     def __init__(self, data, name, action = ignore):
@@ -99,7 +105,7 @@ class Rule(object):
     def __invert__(self):
         return NotRule(self, ''.join(['~', self.name]))
 
-    def __call__(self):
+    def __call__(self, options = default_options):
         if self.parser:
             return self.parser
 
@@ -107,23 +113,18 @@ class Rule(object):
 
         data = self.data
         if isinstance(data, Rule):
-            data = data()
+            data = data(options)
         elif not is_str(data) and is_iterable(data):
-            data = [x() for x in data]
-        parser = self.fn(self.name, data, self.action)
+            data = [x(options) for x in data]
+        parser = self.fn(self.name, data, self.action, options)
         self.parser.fn = parser
         self.parser = parser
         return parser
 
 class TopRule(Rule):
-        self.fn = self.__mk_parser
-
-    def __mk_parser(self, name, fn, action):
-        parser = fn()
-        parser.name = name
-        return parser()
     def __init__(self, fn, action = ignore):
         super(TopRule, self).__init__(fn, fn.__name__, action)
+        self.fn = _mk_parser
 
 class SeqRule(Rule):
     def __init__(self, rules, name, action = value):
