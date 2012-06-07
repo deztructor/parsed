@@ -112,3 +112,29 @@ def escape_str(s):
 
 def wrap(wrapper, s):
     return ''.join([wrapper, s, wrapper])
+
+class Options(object):
+    def __init__(self, **kwargs):
+        self.__options = kwargs
+
+    def __getattr__(self, name):
+        return self.__options[name]
+
+    def __setattr__(self, name, value):
+        if name.startswith('_Options__'):
+            self.__dict__[name] = value
+        else:
+            self.__options[name] = value
+
+    def __dir__(self):
+        return self.__options.keys()
+
+    def update(self, src):
+        return self.__options.update(src)
+
+if __name__ == '__main__':
+    o = Options(a = 1, b = 2)
+    print dir(o)
+    print o.a
+    o.update(dict(d = 3))
+    print dir(o)
