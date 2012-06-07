@@ -8,7 +8,6 @@ import cor
 from cor import Err
 from Common import *
 
-is_parser_trace = False
 debug_indent_level = 0
 debug_indent_sym = '  '
 
@@ -27,12 +26,13 @@ def debug_print(msg, *args, **kwargs):
     cor.log("{}{}", debug_indent_sym * debug_indent_level, \
             msg.format(*args, **kwargs))
 
-def parser(name):
+def parser(name, options):
     def mk_name(name):
         return ''.join([name, '?'])
-    def deco(fn):
-        global is_parser_trace
+
+    def decorate(fn):
         fn.__name__ = mk_name(name)
+
         def wrapper(src):
             global debug_indent
             pr = src if len(src) < 20 else ''.join([str(src[:20]), '...'])
@@ -42,12 +42,14 @@ def parser(name):
                 res = fn(src)
             debug_print("}} => {}", cor.printable_args(res))
             return res
-        if is_parser_trace:
+
+        if options.is_trace:
             wrapper.__name__ = mk_name(name)
             return wrapper
         else:
             return fn
-    return deco
+
+    return decorate
 
 class InfiniteInput(object):
 
@@ -116,14 +118,14 @@ class InfiniteInput(object):
             res.append(chr(0))
             return ''.join(res)
 
-def _match(name, s, conv):
+def _match(name, s, conv, options = default_options):
 
-    @parser(name)
+    @parser(name, options)
     def cmp_sym(src):
         v = src[0]
         return (1, conv(v)) if v == s else nomatch
 
-    @parser(name)
+    @parser(name, options)
     def cmp_fn(src):
         v = src[0]
         return (1, conv(v)) if s(v) else nomatch
@@ -135,21 +137,23 @@ def _match(name, s, conv):
     raise Err("Don't know how to match with {}", s)
 
 def match_cond(c):
-    return lambda name, dummy, action: _match(name, c, action)
+    def gen(name, dummy, action, options = default_options):
+        return  _match(name, c, action)
+    return gen
 
-def match_symbol(name, s, conv):
+def match_symbol(name, s, conv, options = default_options):
     if isinstance(s, str):
         if len(s) != 1:
             raise Err("{} len != 1", s)
     elif s != empty:
         raise Err("{} is not a string", s)
-    return _match(name, s, conv)
+    return _match(name, s, conv, options)
 
-def match_string(name, s, conv):
+def match_string(name, s, conv, options = default_options):
     if not isinstance(s, str):
         raise Err("{} is not a string", s)
     slen = len(s)
-    @parser(name)
+    @parser(name, options)
     def fn(src):
         if len(src) < slen:
             return nomatch
@@ -157,19 +161,19 @@ def match_string(name, s, conv):
         return (slen, conv(v)) if v == s else nomatch
     return fn
 
-def match_iterable(name, pat, conv):
+def match_iterable(name, pat, conv, options = default_options):
     if not cor.is_iterable(pat):
         raise Err("Don't know what to do with {}", seq)
 
     seq = [x for x in pat] if isinstance(pat, str) else pat
-    @parser(name)
+    @parser(name, options)
     def fn(src):
         v = src[0]
         return (1, conv(v)) if v in seq else nomatch
     return fn
 
-def match_any(name, tests, conv):
-    @parser(name)
+def match_any(name, tests, conv, options = default_options):
+    @parser(name, options)
     def fn(src):
         for test in tests:
             res = test(src)
@@ -179,8 +183,8 @@ def match_any(name, tests, conv):
         return nomatch
     return fn
 
-def match_seq(name, tests, conv):
-    @parser(name)
+def match_seq(name, tests, conv, options = default_options):
+    @parser(name, options)
     def fn(src):
         total = []
         pos = 0
@@ -194,8 +198,8 @@ def match_seq(name, tests, conv):
         return pos, conv(total)
     return fn
 
-def one_more(name, test, conv):
-    @parser(name)
+def one_more(name, test, conv, options = default_options):
+    @parser(name, options)
     def fn(src):
         total = []
         pos = 0
@@ -211,8 +215,8 @@ def one_more(name, test, conv):
         return pos, conv(total)
     return fn
 
-def zero_more(name, test, conv):
-    @parser(name)
+def zero_more(name, test, conv, options = default_options):
+    @parser(name, options)
     def fn(src):
         total = []
         pos = 0
@@ -226,8 +230,8 @@ def zero_more(name, test, conv):
         return pos, conv(total)
     return fn
 
-def range_0_1(name, test, conv):
-    @parser(name)
+def range_0_1(name, test, conv, options = default_options):
+    @parser(name, options)
     def fn(src):
         pos = 0
         res = test(src)
@@ -240,15 +244,15 @@ def range_0_1(name, test, conv):
             return (res[0], data)
     return fn
 
-def not_equal(name, test, conv):
-    @parser(name)
+def not_equal(name, test, conv, options = default_options):
+    @parser(name, options)
     def fn(src):
         res = test(src)
         return (1, conv(src[0])) if res == nomatch else nomatch
     return fn
 
-def lookahead(name, test, conv):
-    @parser(name)
+def lookahead(name, test, conv, options = default_options):
+    @parser(name, options)
     def fn(src):
         res = test(src)
         return nomatch if res == nomatch else (0, conv(res[1]))

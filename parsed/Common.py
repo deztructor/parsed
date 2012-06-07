@@ -4,7 +4,7 @@
 # Copyright (c) 2012 Denis Zalevskiy
 # Licensed under MIT License
 
-from cor import const, nth
+from cor import const, nth, Options
 
 nomatch = const('nomatch')
 empty = const('empty')
@@ -19,3 +19,10 @@ def list2str(x): return ''.join(x)
 
 def is_str(c):
     return isinstance(c, str) or c == empty
+
+def mk_options(**kwargs):
+    res = Options(is_trace = False)
+    res.update(kwargs)
+    return res
+
+default_options = mk_options()
