@@ -5,6 +5,7 @@
 # Licensed under MIT License
 
 from parsed import *
+from parsed.Common import default_options
 
 @rule
 def sign(): return char('+-')[:1] > \
@@ -46,23 +47,27 @@ def atom_sym(): return ascii | "-./_:;*+=?!^%&|@$" > value
 @rule
 def name(): return atom_sym[1:] > list2str
 @rule
-def keyword(): return ':' + name > value
+def keyword(): return ':' + name > first
 @rule
 def atom_body(): return keyword | unit | quoted | number | \
-        name | dquoted_str | alist > value
+        name | dquoted_str > value
 @rule
-def atom_end(): return space | ')' | ';' | eol > ignore
+def atom_end(): return space | '(' | ')' | ';' | eol > ignore
 @rule
-def atom(): return spaces + atom_body & atom_end > first
+def atom(): return atom_body & atom_end > first
 @rule
 def comment(): return ';' + ~eol[0:] + eol >\
         (lambda x: list2str(x[0]))
 @rule
-def alist(): return '(' + (comment | atom)[1:] + ')' > first
+def list_item(): return spaces + sexp > first
 @rule
-def grammar(): return comment | alist | atom > value
+def alist(): return '(' + list_item[1:] + spaces + ')' > first
+@rule
+def sexp(): return comment | alist | atom > value
 
 
+#default_options.is_trace = True
+# cache_clean(globals())
 
 p = grammar()
 s = source('(1 2;er\n#f "dd")')
