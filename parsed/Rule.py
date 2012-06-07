@@ -45,10 +45,11 @@ def mk_rule_choice(r1, r2, name):
 
 class Rule(object):
 
-    def __init__(self, data, name):
+    def __init__(self, data, name, action = ignore):
         self.parser = None
         self.data = data
         self.name = name
+        self.action = action
         self.__integers = integers()
 
     def __repr__(self):
@@ -115,21 +116,19 @@ class Rule(object):
         return parser
 
 class TopRule(Rule):
-    def __init__(self, fn):
-        super(TopRule, self).__init__(fn, fn.__name__)
         self.fn = self.__mk_parser
-        self.action = ignore
 
     def __mk_parser(self, name, fn, action):
         parser = fn()
         parser.name = name
         return parser()
+    def __init__(self, fn, action = ignore):
+        super(TopRule, self).__init__(fn, fn.__name__, action)
 
 class SeqRule(Rule):
-    def __init__(self, rules, name):
-        super(SeqRule, self).__init__(rules, name)
+    def __init__(self, rules, name, action = value):
+        super(SeqRule, self).__init__(rules, name, action)
         self.fn = match_seq
-        self.action = value
 
     def __add__(self, other):
         return SeqRule(self.data + (mk_rule(other),), self.name)
@@ -146,10 +145,9 @@ class SeqRule(Rule):
         return SeqRule((other,) + self.data, self.name)
 
 class ChoiceRule(Rule):
-    def __init__(self, rules, name):
-        super(ChoiceRule, self).__init__(rules, name)
+    def __init__(self, rules, name, action = value):
+        super(ChoiceRule, self).__init__(rules, name, action)
         self.fn = match_any
-        self.action = value
 
     def __or__(self, other):
         return ChoiceRule(self.data + (mk_rule(other),), self.name)
@@ -158,50 +156,51 @@ class ChoiceRule(Rule):
         return ChoiceRule((mk_rule(other),) + self.data, self.name)
 
 class NotRule(Rule):
-    def __init__(self, rule, name):
-        super(NotRule, self).__init__(rule, name)
+    def __init__(self, rule, name, action = value):
+        super(NotRule, self).__init__(rule, name, action)
         self.fn = not_equal
-        self.action = value
 
     def __invert__(self):
         return self.data
 
 class StringRule(Rule):
-    def __init__(self, s, name = None):
+    def __init__(self, s, name = None, action = value):
         if name is None:
             name = ''.join(['str("', s, '")'])
         self.fn = match_string
-        self.action = value
-        super(StringRule, self).__init__(s, name)
+        super(StringRule, self).__init__(s, name, action)
 
 class CharRule(Rule):
-    def __init__(self, c, name = None):
+    def __init__(self, c, name = None, action = None):
         if c == empty:
             if name is None:
                 name = 'nomatch?'
-            self.fn, self.action = match_symbol, ignore
+            self.fn = match_symbol
+            if action is None: action = ignore
         elif is_iterable(c):
             if len(c) == 1:
                 if name is None:
                     name = ''.join(['chr("', c, '")'])
-                self.fn, self.action = match_symbol, ignore
+                self.fn = match_symbol
+                if action is None: action = ignore
             else:
                 if name is None:
                     name = ''.join(['any("', c, '")'])
-                self.fn, self.action = match_iterable, value
+                self.fn = match_iterable
+                if action is None: action = value
         elif callable(c):
             if name is None:
                 name = c.__name__
-            self.fn, self.action = match_cond(c), value
+            self.fn = match_cond(c)
+            if action is None: action = value
             c = nomatch
         else:
             raise Err("Don't know how to make match from {}", c)
-        super(CharRule, self).__init__(c, name)
+        super(CharRule, self).__init__(c, name, action)
 
 class RangeRule(Rule):
-    def __init__(self, rule, from_to, name):
-        super(RangeRule, self).__init__(rule, name)
-        self.action = value
+    def __init__(self, rule, from_to, name, action = value):
+        super(RangeRule, self).__init__(rule, name, action)
         begin, end = from_to
         def err(): raise Err("Can't handle {} range", from_to)
         if not begin:
@@ -217,10 +216,9 @@ class RangeRule(Rule):
             err()
 
 class LookaheadRule(Rule):
-    def __init__(self, rule, name):
+    def __init__(self, rule, name, action = ignore):
         super(LookaheadRule, self).__init__(rule, '_'.join(['fwd', name]))
         self.fn = lookahead
-        self.action = ignore
 
     def __neg__(self):
         return self
