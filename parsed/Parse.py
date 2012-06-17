@@ -172,7 +172,7 @@ class InfiniteInput(object):
 #standard return if rule is not matched
 _nomatch_res = (0, nomatch)
 
-def _match(name, s, conv, options = default_options):
+def _match(name, s, conv, options):
 
     @parser(name, options)
     def cmp_sym(src):
@@ -199,12 +199,11 @@ def _match(name, s, conv, options = default_options):
     raise Err("Don't know how to match with {}", s)
 
 def match_cond(c):
-    def gen(name, dummy, action, options = default_options):
-        return  _match(name, c, action)
+    def gen(name, dummy, action, options):
         return  _match(name, c, action, options)
     return gen
 
-def match_symbol(name, s, conv, options = default_options):
+def match_symbol(name, s, conv, options):
     if isinstance(s, str):
         if len(s) != 1:
             raise Err("{} len != 1", s)
@@ -212,7 +211,7 @@ def match_symbol(name, s, conv, options = default_options):
         raise Err("{} is not a string", s)
     return _match(name, s, conv, options)
 
-def match_string(name, s, conv, options = default_options):
+def match_string(name, s, conv, options):
     if not isinstance(s, str):
         raise Err("{} is not a string", s)
     slen = len(s)
@@ -228,7 +227,7 @@ def match_string(name, s, conv, options = default_options):
             return _nomatch_res
     return fn
 
-def match_iterable(name, pat, conv, options = default_options):
+def match_iterable(name, pat, conv, options):
     if not cor.is_iterable(pat):
         raise Err("Don't know what to do with {}", seq)
 
@@ -243,7 +242,7 @@ def match_iterable(name, pat, conv, options = default_options):
             return _nomatch_res
     return fn
 
-def match_any(name, tests, conv, options = default_options):
+def match_any(name, tests, conv, options):
     @parser(name, options)
     def fn(src):
         for test in tests:
@@ -256,7 +255,7 @@ def match_any(name, tests, conv, options = default_options):
     fn.children = tests
     return fn
 
-def match_seq(name, tests, conv, options = default_options):
+def match_seq(name, tests, conv, options):
     @parser(name, options)
     def fn(src):
         total = []
@@ -273,7 +272,7 @@ def match_seq(name, tests, conv, options = default_options):
     fn.children = tests
     return fn
 
-def one_more(name, test, conv, options = default_options):
+def one_more(name, test, conv, options):
     @parser(name, options)
     def fn(src):
         total = []
@@ -292,7 +291,7 @@ def one_more(name, test, conv, options = default_options):
     return fn
 
 def mk_closed_range(begin, end):
-    def closed_range(name, test, conv, options = default_options):
+    def closed_range(name, test, conv, options):
         @parser(name, options)
         def fn(src):
             count = 0
@@ -319,7 +318,7 @@ def mk_closed_range(begin, end):
         return fn
     return closed_range
 
-def zero_more(name, test, conv, options = default_options):
+def zero_more(name, test, conv, options):
     @parser(name, options)
     def fn(src):
         total = []
@@ -335,7 +334,7 @@ def zero_more(name, test, conv, options = default_options):
     fn.children = list((test,))
     return fn
 
-def range_0_1(name, test, conv, options = default_options):
+def range_0_1(name, test, conv, options):
     @parser(name, options)
     def fn(src):
         pos, value = test.parse(src)
@@ -347,7 +346,7 @@ def range_0_1(name, test, conv, options = default_options):
     fn.children = list((test,))
     return fn
 
-def not_equal(name, test, conv, options = default_options):
+def not_equal(name, test, conv, options):
     @parser(name, options)
     def fn(src):
         if src[0] == empty:
@@ -361,7 +360,7 @@ def not_equal(name, test, conv, options = default_options):
     fn.children = list((test,))
     return fn
 
-def lookahead(name, test, conv, options = default_options):
+def lookahead(name, test, conv, options):
     @parser(name, options)
     def fn(src):
         pos, value = test.parse(src)
