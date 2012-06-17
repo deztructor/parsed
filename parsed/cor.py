@@ -7,6 +7,7 @@
 import collections
 import traceback
 import sys
+import time
 
 def is_iterable(v):
     return isinstance(v, collections.Iterable)
@@ -131,6 +132,21 @@ class Options(object):
 
     def update(self, src):
         return self.__options.update(src)
+
+class Stopwatch(object):
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.begin = self._now
+
+    @property
+    def _now(self):
+        return time.time()
+
+    @property
+    def dt(self):
+        return self._now - self.begin
 
 if __name__ == '__main__':
     o = Options(a = 1, b = 2)
