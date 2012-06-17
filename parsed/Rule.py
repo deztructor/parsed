@@ -14,8 +14,8 @@ class Forward(object):
     def __init__(self, name):
         self.name = ''.join(['>', name])
 
-    def __call__(self, *args, **kwargs):
-        return self.fn(*args, **kwargs)
+    def parse(self, src):
+        return self.fn.parse(src)
 
 def mk_rule(src):
     if isinstance(src, Rule):

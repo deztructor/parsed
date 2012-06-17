@@ -7,7 +7,7 @@
 from parsed import *
 from parsed.cor import Err, log
 
-def grammar(ctx):
+def grammar(ctx, options = mk_options(is_trace = False)):
 
     @rule
     def safe_char():
@@ -104,7 +104,7 @@ def grammar(ctx):
         return wrap('BEGIN', 'VCARD') + tags + wrap('END', 'VCARD') + eol \
             > (lambda x: ctx.vcard(x[0]))
 
-    return vcard(mk_options(is_trace = False))
+    return vcard(options)
 
 class VCTag(object):
     def __init__(self, group, name, params, value):
@@ -135,7 +135,6 @@ class VCardCtx(object):
     tag = VCTag
     vcard = VCard
 
-g = grammar(VCardCtx())
 
 vc = '''
 BEGIN:VCARD\r
@@ -153,6 +152,7 @@ EMAIL;TYPE=WORK:dude@nowhere.com\r
 END:VCARD\r
 '''
 
-pos, value = g(source(vc))
+g = grammar(VCardCtx(), mk_options(is_remember = False))
 
+pos, value = g.parse(source(vc))
 print value

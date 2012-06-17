@@ -10,11 +10,11 @@ from parsed import *
 
 #using to test and see how parser works
 def test_parser(generator, src_str):
-    parse = generator()
-    print "Using", parse.__name__
+    parser = generator()
+    print "Using", parser.__name__
     print "Parsing:", repr(src_str)
     src = source(src_str)
-    print "GOT:", parse(src)
+    print "GOT:", parser.parse(src)
     print
 
 #basic parser generator function, on parsing tracking will be reported

@@ -35,11 +35,13 @@ gets its name from generator function name. This is why lambdas
 etc. are not used. To correctly parse iterable source one should wrap
 it with the source() function.
 
-        parse = abc()
+        parser = abc()
         src = source('a')
-        result = parse(src)
+        position, result = parser.parse(src)
         if result != nomatch:
-            position, data = result
+            print "MATCH", result, "@", position
+        else:
+            print "NO MATCH"
 
 ### Rules
 
@@ -169,8 +171,10 @@ TODO
 
 ### Parsing options
 
-Now there is only one parser debugging option avaiable -- 'is_trace',
-if it is set to True, parsing process will be traced into stderr.
+* is_trace: if it is set to True, parsing process will be traced into
+  stderr
+
+* is_remember: if True --- use memoization
 
 What's next?
 ------------
@@ -180,5 +184,7 @@ What's next?
 * add Abstract Syntax Tree visualization
 
 * parser optimization
+
+* use unit tests to avoid regressions
 
 * ?..

@@ -26,12 +26,56 @@ def debug_print(msg, *args, **kwargs):
     cor.log("{}{}", debug_indent_sym * debug_indent_level, \
             msg.format(*args, **kwargs))
 
+class Parser(object):
+
+    def __init__(self, fn, name):
+        self.parse = fn
+        self.__name__ = name
+        self.__children = tuple()
+
+    def cache_clear(self):
+        self.__cache = dict()
+        if len(self.__children):
+            [x.cache_clear() for x in self.__children]
+
+    @property
+    def children(self):
+        return self.__children
+
+    @children.setter
+    def children(self, v):
+        self.__children = v
+
+    @property
+    def name(self):
+        return self.__name__
+
+class CachingParser(Parser):
+
+    _cache_hits = 0
+
+    def __init__(self, fn, name):
+        super(CachingParser, self).__init__(fn, name)
+        self.__fn = self.parse
+        self.parse = self.__parse
+        self.__cache = dict()
+
+    def __parse(self, src):
+        apos = src.absolute_pos
+        if apos in self.__cache:
+            CachingParser._cache_hits += 1
+            return self.__cache[apos]
+        res = self.__fn(src)
+        self.__cache[apos] = res
+        return res
+
 def parser(name, options):
     def mk_name(name):
         return ''.join([name, '?'])
 
-    def decorate(fn):
-        fn.__name__ = mk_name(name)
+    def decorate(match_fn):
+        cls = CachingParser if options.is_remember else Parser
+        fn = cls(match_fn, mk_name(name))
 
         def wrapper(src):
             global debug_indent
@@ -52,12 +96,19 @@ def parser(name, options):
     return decorate
 
 class InfiniteInput(object):
+    '''imitates virtually infinite random access vector, returns empty
+    after the end of source input
+    '''
 
     len_limit = 1024 * 64
 
     def __init__(self, src, begin = 0, end = None):
         self.__s = src
         self.__begin = begin
+        self.absolute_pos = src.absolute_pos + begin \
+                            if hasattr(src, 'absolute_pos') \
+                               else begin
+            
         self.__is_endless = end is None
         if end is None:
             self._end = lambda: len(src)
@@ -195,12 +246,13 @@ def match_any(name, tests, conv, options = default_options):
     @parser(name, options)
     def fn(src):
         for test in tests:
-            pos, value = test(src)
+            pos, value = test.parse(src)
             if value != nomatch:
                 value = conv(value)
                 if (value != nomatch):
                     return (pos, value)
         return _nomatch_res
+    fn.children = tests
     return fn
 
 def match_seq(name, tests, conv, options = default_options):
@@ -209,7 +261,7 @@ def match_seq(name, tests, conv, options = default_options):
         total = []
         pos = 0
         for test in tests:
-            dpos, value = test(src[pos:])
+            dpos, value = test.parse(src[pos:])
             if value == nomatch:
                 return _nomatch_res
             if value != empty:
@@ -217,6 +269,7 @@ def match_seq(name, tests, conv, options = default_options):
             pos += dpos
         res = conv(total)
         return (pos, res) if res != nomatch else _nomatch_res
+    fn.children = tests
     return fn
 
 def one_more(name, test, conv, options = default_options):
@@ -224,16 +277,17 @@ def one_more(name, test, conv, options = default_options):
     def fn(src):
         total = []
         pos = 0
-        dpos, value = test(src)
+        dpos, value = test.parse(src)
         if value == nomatch:
             return _nomatch_res
         while value != nomatch:
             if value != empty:
                 total.append(value)
             pos += dpos
-            dpos, value = test(src[pos:])
+            dpos, value = test.parse(src[pos:])
         res = conv(total)
         return (pos, res) if res != nomatch else _nomatch_res
+    fn.children = list((test,))
     return fn
 
 def mk_closed_range(begin, end):
@@ -243,7 +297,7 @@ def mk_closed_range(begin, end):
             count = 0
             total = []
             pos = 0
-            dpos, value = test(src)
+            dpos, value = test.parse(src)
             if value == nomatch:
                 return _nomatch_res
             while value != nomatch:
@@ -253,13 +307,14 @@ def mk_closed_range(begin, end):
                 if value != empty:
                     total.append(value)
                 pos += dpos
-                dpos, value = test(src[pos:])
+                dpos, value = test.parse(src[pos:])
             if count >= begin:
                 res = conv(total)
                 return (pos, res) if res != nomatch else _nomatch_res
             else:
                 return _nomatch_res
 
+        fn.children = list((test,))
         return fn
     return closed_range
 
@@ -268,25 +323,27 @@ def zero_more(name, test, conv, options = default_options):
     def fn(src):
         total = []
         pos = 0
-        dpos, value = test(src)
+        dpos, value = test.parse(src)
         while value != nomatch:
             if value != empty:
                 total.append(value)
             pos += dpos
-            dpos, value = test(src[pos:])
+            dpos, value = test.parse(src[pos:])
         res = conv(total)
         return (pos, res) if res != nomatch else _nomatch_res
+    fn.children = list((test,))
     return fn
 
 def range_0_1(name, test, conv, options = default_options):
     @parser(name, options)
     def fn(src):
-        pos, value = test(src)
+        pos, value = test.parse(src)
         if value == nomatch:
             pos, value = (0, empty)
 
         value = conv(value)
         return (pos, value) if value != nomatch else _nomatch_res
+    fn.children = list((test,))
     return fn
 
 def not_equal(name, test, conv, options = default_options):
@@ -294,21 +351,23 @@ def not_equal(name, test, conv, options = default_options):
     def fn(src):
         if src[0] == empty:
             return _nomatch_res
-        pos, value = test(src)
+        pos, value = test.parse(src)
         if value == nomatch:
             value = conv(src[0])
             return (1, value) if value != nomatch else _nomatch_res
         else:
             return _nomatch_res
+    fn.children = list((test,))
     return fn
 
 def lookahead(name, test, conv, options = default_options):
     @parser(name, options)
     def fn(src):
-        pos, value = test(src)
+        pos, value = test.parse(src)
         if value != nomatch:
             value = conv(value)
             return (0, value) if value != nomatch else _nomatch_res
         else:
             return _nomatch_res
+    fn.children = list((test,))
     return fn

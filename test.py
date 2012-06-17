@@ -69,6 +69,6 @@ def sexp(): return comment | alist | atom > value
 #default_options.is_trace = True
 # cache_clean(globals())
 
-p = sexp()
+p = sexp(mk_options(is_trace = False))
 s = source('(1 2;er\n#f "dd")')
-print p(s)
+print p.parse(s)

@@ -21,7 +21,7 @@ def is_str(c):
     return isinstance(c, str) or c == empty
 
 def mk_options(**kwargs):
-    res = Options(is_trace = False)
+    res = Options(is_trace = False, is_remember = True)
     res.update(kwargs)
     return res
 
