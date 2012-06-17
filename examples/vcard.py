@@ -32,17 +32,13 @@ def grammar(ctx):
         return ~(text('END:') | text('BEGIN:')) > ignore
 
     @rule
-    def tag_name():
-        return -ne_end + ascii[1:] > (lambda x: list2str(x[0]))
-
-    @rule
     def iana_token(): return (ascii_digit | '-')[1:] > list2str
 
     @rule
     def x_name(): return text('X-') + iana_token > second
 
     @rule
-    def param_name():
+    def name():
         return iana_token | x_name > value
 
     @rule
@@ -61,8 +57,12 @@ def grammar(ctx):
             > (lambda x: [x[0]] + x[1])
 
     @rule
-    def tag_param(): return ';' + param_name + '=' + param_values \
+    def tag_param(): return ';' + name + '=' + param_values \
         > value
+
+    @rule
+    def tag_name():
+        return -ne_end + name > first
 
     @rule
     def text_begin():
@@ -87,36 +87,55 @@ def grammar(ctx):
         return tag_spec | tag_text > value
 
     @rule
+    def group():
+        return (iana_token + '.' > first)[:1] \
+            > (lambda x: "" if x == empty else x)
+
+    @rule
     def atag():
-        return vspaces + tag_name + tag_param[0:] + ':' + tag_value \
-            > (lambda x: ctx.tag(x[0], x[1], x[2]))
+        return vspaces + group + tag_name + tag_param[0:] + ':' + tag_value \
+            > (lambda x: ctx.tag(*x))
 
     @rule
     def tags(): return atag[0:]
 
     @rule
     def vcard():
-        return wrap('BEGIN', 'VCARD') + tags + wrap('END', 'VCARD') + eol
+        return wrap('BEGIN', 'VCARD') + tags + wrap('END', 'VCARD') + eol \
+            > (lambda x: ctx.vcard(x[0]))
 
-    return vcard(mk_options(is_trace = True))
+    return vcard(mk_options(is_trace = False))
 
 class VCTag(object):
-    def __init__(self, name, params, value):
+    def __init__(self, group, name, params, value):
+        self.group = group
         self.name = name
         self.params = dict(params)
         self.value = value
 
     def __repr__(self):
-        return "VCTag({}, {}, {})".format(self.name, self.params, self.value)
-
+        if self.group:
+            return "VCTag({}.{}, {}, {})".format(self.group, self.name,
+                                                 self.params, self.value)
+        else:
+            return "VCTag({}, {}, {})".format(self.name, self.params, self.value)
     __str__ = __repr__
 
 class VCard(object):
-    def tag(self, name, params, value):
-        return VCTag(name, params, value)
 
+    def __init__(self, tags):
+        self.tags = tags
 
-g = grammar(VCard())
+    def __repr__(self):
+        return '\n'.join([repr(x) for x in self.tags])
+
+    __str__ = __repr__
+
+class VCardCtx(object):
+    tag = VCTag
+    vcard = VCard
+
+g = grammar(VCardCtx())
 
 vc = '''
 BEGIN:VCARD\r
@@ -134,6 +153,6 @@ EMAIL;TYPE=WORK:dude@nowhere.com\r
 END:VCARD\r
 '''
 
-res = g(source(vc))
+pos, value = g(source(vc))
 
-print res
+print value
