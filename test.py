@@ -69,6 +69,6 @@ def sexp(): return comment | alist | atom > value
 #default_options.is_trace = True
 # cache_clean(globals())
 
-p = grammar()
+p = sexp()
 s = source('(1 2;er\n#f "dd")')
 print p(s)
