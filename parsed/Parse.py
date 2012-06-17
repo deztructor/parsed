@@ -201,6 +201,7 @@ def _match(name, s, conv, options = default_options):
 def match_cond(c):
     def gen(name, dummy, action, options = default_options):
         return  _match(name, c, action)
+        return  _match(name, c, action, options)
     return gen
 
 def match_symbol(name, s, conv, options = default_options):
