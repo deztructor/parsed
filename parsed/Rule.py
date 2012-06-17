@@ -87,7 +87,8 @@ class Rule(object):
 
     def __getitem__(self, k):
         if not isinstance(k, slice):
-            raise Err("Supports only slices now")
+            return RangeRule(self, (k, k), self._next_child_name)
+
         if not (k.step is None or k.step == 1):
             raise cor.Err("Can't handle step != 1")
         start, stop = k.start, k.stop
@@ -204,6 +205,9 @@ class RangeRule(Rule):
         super(RangeRule, self).__init__(rule, name, action)
         begin, end = from_to
         def err(): raise Err("Can't handle {} range", from_to)
+        if begin == inf or end == 0:
+            err()
+
         if not begin:
             if end == inf:
                 self.fn = zero_more
@@ -213,6 +217,8 @@ class RangeRule(Rule):
                 err()
         elif begin == 1 and end == inf:
             self.fn = one_more
+        elif end != inf and begin <= end:
+            self.fn = mk_closed_range(begin, end)
         else:
             err()
 

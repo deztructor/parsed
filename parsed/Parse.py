@@ -215,6 +215,30 @@ def one_more(name, test, conv, options = default_options):
         return pos, conv(total)
     return fn
 
+def mk_closed_range(begin, end):
+    def closed_range(name, test, conv, options = default_options):
+        @parser(name, options)
+        def fn(src):
+            count = 0
+            total = []
+            pos = 0
+            res = test(src)
+            if res == nomatch:
+                return res
+            while res != nomatch:
+                count += 1
+                if count > end:
+                    return nomatch
+                data = res[1]
+                if data != empty:
+                    total.append(data)
+                pos += res[0]
+                res = test(src[pos:])
+            return (pos, conv(total)) if count >= begin else nomatch
+
+        return fn
+    return closed_range
+
 def zero_more(name, test, conv, options = default_options):
     @parser(name, options)
     def fn(src):
