@@ -271,6 +271,8 @@ def range_0_1(name, test, conv, options = default_options):
 def not_equal(name, test, conv, options = default_options):
     @parser(name, options)
     def fn(src):
+        if src[0] == empty:
+            return nomatch
         res = test(src)
         return (1, conv(src[0])) if res == nomatch else nomatch
     return fn
