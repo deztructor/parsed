@@ -65,6 +65,7 @@ def within(begin, end):
     @rule
     def fn():
         return char(check) > value
+    fn.name = '?[{}, {}]'.format(begin, end)
     return fn
 
 @rule
