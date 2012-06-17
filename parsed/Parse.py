@@ -118,17 +118,20 @@ class InfiniteInput(object):
             res.append(chr(0))
             return ''.join(res)
 
+#standard return if rule is not matched
+_nomatch_res = (0, nomatch)
+
 def _match(name, s, conv, options = default_options):
 
     @parser(name, options)
     def cmp_sym(src):
         v = src[0]
-        return (1, conv(v)) if v == s else nomatch
+        return (1, conv(v)) if v == s else _nomatch_res
 
     @parser(name, options)
     def cmp_fn(src):
         v = src[0]
-        return (1, conv(v)) if s(v) else nomatch
+        return (1, conv(v)) if s(v) else _nomatch_res
 
     if is_str(s):
         return cmp_sym
@@ -156,9 +159,9 @@ def match_string(name, s, conv, options = default_options):
     @parser(name, options)
     def fn(src):
         if len(src) < slen:
-            return nomatch
+            return _nomatch_res
         v = src[0:slen].as_string()
-        return (slen, conv(v)) if v == s else nomatch
+        return (slen, conv(v)) if v == s else _nomatch_res
     return fn
 
 def match_iterable(name, pat, conv, options = default_options):
@@ -169,18 +172,18 @@ def match_iterable(name, pat, conv, options = default_options):
     @parser(name, options)
     def fn(src):
         v = src[0]
-        return (1, conv(v)) if v in seq else nomatch
+        return (1, conv(v)) if v in seq else _nomatch_res
     return fn
 
 def match_any(name, tests, conv, options = default_options):
     @parser(name, options)
     def fn(src):
         for test in tests:
-            res = test(src)
-            if res == nomatch:
+            pos, value = test(src)
+            if value == nomatch:
                 continue
-            return (res[0], conv(res[1]))
-        return nomatch
+            return (pos, conv(value))
+        return _nomatch_res
     return fn
 
 def match_seq(name, tests, conv, options = default_options):
@@ -189,13 +192,13 @@ def match_seq(name, tests, conv, options = default_options):
         total = []
         pos = 0
         for test in tests:
-            res = test(src[pos:])
-            if res == nomatch:
-                return nomatch
-            if res[1] != empty:
-                total.append(res[1])
-            pos += res[0]
-        return pos, conv(total)
+            dpos, value = test(src[pos:])
+            if value == nomatch:
+                return _nomatch_res
+            if value != empty:
+                total.append(value)
+            pos += dpos
+        return (pos, conv(total))
     return fn
 
 def one_more(name, test, conv, options = default_options):
@@ -203,16 +206,15 @@ def one_more(name, test, conv, options = default_options):
     def fn(src):
         total = []
         pos = 0
-        res = test(src)
-        if res == nomatch:
-            return res
-        while res != nomatch:
-            data = res[1]
-            if data != empty:
-                total.append(data)
-            pos += res[0]
-            res = test(src[pos:])
-        return pos, conv(total)
+        dpos, value = test(src)
+        if value == nomatch:
+            return _nomatch_res
+        while value != nomatch:
+            if value != empty:
+                total.append(value)
+            pos += dpos
+            dpos, value = test(src[pos:])
+        return (pos, conv(total))
     return fn
 
 def mk_closed_range(begin, end):
@@ -222,19 +224,18 @@ def mk_closed_range(begin, end):
             count = 0
             total = []
             pos = 0
-            res = test(src)
-            if res == nomatch:
-                return res
-            while res != nomatch:
+            dpos, value = test(src)
+            if value == nomatch:
+                return _nomatch_res
+            while value != nomatch:
                 count += 1
                 if count > end:
-                    return nomatch
-                data = res[1]
-                if data != empty:
-                    total.append(data)
-                pos += res[0]
-                res = test(src[pos:])
-            return (pos, conv(total)) if count >= begin else nomatch
+                    return _nomatch_res
+                if value != empty:
+                    total.append(value)
+                pos += dpos
+                dpos, value = test(src[pos:])
+            return (pos, conv(total)) if count >= begin else _nomatch_res
 
         return fn
     return closed_range
@@ -244,42 +245,37 @@ def zero_more(name, test, conv, options = default_options):
     def fn(src):
         total = []
         pos = 0
-        res = test(src)
-        while res != nomatch:
-            data = res[1]
-            if data != empty:
-                total.append(data)
-            pos += res[0]
-            res = test(src[pos:])
-        return pos, conv(total)
+        dpos, value = test(src)
+        while value != nomatch:
+            if value != empty:
+                total.append(value)
+            pos += dpos
+            dpos, value = test(src[pos:])
+        return (pos, conv(total))
     return fn
 
 def range_0_1(name, test, conv, options = default_options):
     @parser(name, options)
     def fn(src):
-        pos = 0
-        res = test(src)
-        if res == nomatch:
+        dpos, value = test(src)
+        if value == nomatch:
             return (0, conv(empty))
         else:
-            data = res[1]
-            if data != empty:
-                data = conv(data)
-            return (res[0], data)
+            return (pos, conv(value))
     return fn
 
 def not_equal(name, test, conv, options = default_options):
     @parser(name, options)
     def fn(src):
         if src[0] == empty:
-            return nomatch
-        res = test(src)
-        return (1, conv(src[0])) if res == nomatch else nomatch
+            return _nomatch_res
+        pos, value = test(src)
+        return (1, conv(src[0])) if value == nomatch else _nomatch_res
     return fn
 
 def lookahead(name, test, conv, options = default_options):
     @parser(name, options)
     def fn(src):
-        res = test(src)
-        return nomatch if res == nomatch else (0, conv(res[1]))
+        pos, value = test(src)
+        return _nomatch_res if value == nomatch else (0, conv(value))
     return fn
