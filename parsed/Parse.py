@@ -8,23 +8,6 @@ import cor
 from cor import Err
 from Common import *
 
-debug_indent_level = 0
-debug_indent_sym = '  '
-
-def __indent_plus():
-    global debug_indent_level
-    debug_indent_level += 1
-
-def __indent_minus(*args):
-    global debug_indent_level
-    debug_indent_level -= 1
-
-debug_indent = cor.Scope(__indent_plus, __indent_minus)
-
-def debug_print(msg, *args, **kwargs):
-    global debug_indent_sym, debug_indent_level
-    cor.log("{}{}", debug_indent_sym * debug_indent_level, \
-            msg.format(*args, **kwargs))
 
 class Parser(object):
 
@@ -72,6 +55,52 @@ class CachingParser(Parser):
         if len(self.children):
             [x.cache_clear() for x in self.children]
 
+class Tracer(object):
+
+    debug_indent_level = 0
+    debug_indent_sym = '  '
+
+    def __indent_plus(self):
+        Tracer.debug_indent_level += 1
+
+    def __indent_minus(self, *args):
+        Tracer.debug_indent_level -= 1
+
+    def debug_print(self, msg, *args, **kwargs):
+        indent = Tracer.debug_indent_sym * Tracer.debug_indent_level
+        cor.log("{}{}", indent, msg.format(*args, **kwargs))
+
+    def __init__(self, parser):
+        self.__indent = cor.Scope(self.__indent_plus,
+                                  self.__indent_minus)
+        self.__parser = parser
+        self.__name__ = parser.__name__
+
+    def parse(self, src):
+        pr = src if len(src) < 20 else ''.join([str(src[:20]), '...'])
+        pr = cor.escape_str(pr)
+        self.debug_print("{}({}) {{", self.__name__, cor.wrap('"', pr))
+        with self.__indent:
+            res = self.__parser.parse(src)
+        self.debug_print("}} => {}", cor.printable_args(res))
+        return res
+
+    @property
+    def children(self):
+        return self.__parser.children
+
+    @children.setter
+    def children(self, v):
+        self.__parser.children = v
+
+    @property
+    def name(self):
+        return self.__name__
+
+    def cache_clear(self):
+        return self.__parser.cache_clear()
+
+
 def parser(name, options):
     def mk_name(name):
         return ''.join([name, '?'])
@@ -79,20 +108,8 @@ def parser(name, options):
     def decorate(match_fn):
         cls = CachingParser if options.is_remember else Parser
         fn = cls(match_fn, mk_name(name))
-
-        def wrapper(src):
-            global debug_indent
-            pr = src if len(src) < 20 else ''.join([str(src[:20]), '...'])
-            pr = cor.escape_str(pr)
-            debug_print("{}({}) {{", fn.__name__, cor.wrap('"',pr))
-            with debug_indent:
-                res = fn(src)
-            debug_print("}} => {}", cor.printable_args(res))
-            return res
-
         if options.is_trace:
-            wrapper.__name__ = mk_name(name)
-            return wrapper
+            return Tracer(fn)
         else:
             return fn
 
@@ -177,7 +194,10 @@ _nomatch_res = (0, nomatch)
 
 def _match(name, s, conv, options):
 
-    @parser(name, options)
+    custom_options = options.copy()
+    custom_options.is_remember = False
+    
+    @parser(name, custom_options)
     def cmp_sym(src):
         v = src[0]
         if v == s:
