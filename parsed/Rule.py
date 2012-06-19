@@ -55,7 +55,8 @@ class Rule(object):
         self.parser = None
         self.data = data
         self.name = name
-        self.action = action
+        self.default_action = action
+        self._action = None
         self.__integers = integers()
 
     def __repr__(self):
@@ -97,8 +98,12 @@ class Rule(object):
         return RangeRule(self, r, self._next_child_name)
 
     def __gt__(self, action):
-        self.action = action
+        self._action = action
         return self
+
+    @property
+    def action(self):
+        return self._action if self._action else self.default_action
 
     def __neg__(self):
         return LookaheadRule(self, self.name)
@@ -148,6 +153,8 @@ class SeqRule(Rule):
 
 class ChoiceRule(Rule):
     def __init__(self, rules, name, action = value):
+        for r in rules:
+            r.default_action = value
         super(ChoiceRule, self).__init__(rules, name, action)
         self.fn = match_any
 
