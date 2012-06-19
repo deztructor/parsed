@@ -133,6 +133,9 @@ class Options(object):
     def update(self, src):
         return self.__options.update(src)
 
+    def copy(self):
+        return Options(**dict(self.__options))
+
 class Stopwatch(object):
     def __init__(self):
         self.reset()
