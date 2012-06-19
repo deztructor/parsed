@@ -33,11 +33,6 @@ class Parser(object):
         self.__name__ = name
         self.__children = tuple()
 
-    def cache_clear(self):
-        self.__cache = dict()
-        if len(self.__children):
-            [x.cache_clear() for x in self.__children]
-
     @property
     def children(self):
         return self.__children
@@ -49,6 +44,9 @@ class Parser(object):
     @property
     def name(self):
         return self.__name__
+
+    def cache_clear(self):
+        pass
 
 class CachingParser(Parser):
 
@@ -68,6 +66,11 @@ class CachingParser(Parser):
         res = self.__fn(src)
         self.__cache[apos] = res
         return res
+
+    def cache_clear(self):
+        self.__cache = dict()
+        if len(self.children):
+            [x.cache_clear() for x in self.children]
 
 def parser(name, options):
     def mk_name(name):
