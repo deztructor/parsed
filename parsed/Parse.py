@@ -190,49 +190,42 @@ class InfiniteInput(object):
 #standard return if rule is not matched
 _nomatch_res = (0, nomatch)
 
-def _match(name, s, conv, options):
+def match_symbol_predicate(pred):
+    def wrapper(name, dummy, action, options):
+        @parser(name, options)
+        def fn(src):
+            v = src[0]
+            if pred(v):
+                v = action(v)
+                return (1, v) if v != nomatch else _nomatch_res
+            else:
+                return _nomatch_res
+        return fn
+    return wrapper
 
-    custom_options = options.copy()
-    custom_options.is_remember = False
-    
-    @parser(name, custom_options)
-    def cmp_sym(src):
-        v = src[0]
-        if v == s:
-            v = conv(v)
-            return (1, v) if v != nomatch else _nomatch_res
-        else:
-            return _nomatch_res
-
-    @parser(name, options)
-    def cmp_fn(src):
-        v = src[0]
-        if s(v):
-            v = conv(v)
-            return (1, v) if v != nomatch else _nomatch_res
-        else:
-            return _nomatch_res
-
-    if is_str(s):
-        return cmp_sym
-    elif callable(s):
-        return cmp_fn
-    raise Err("Don't know how to match with {}", s)
-
-def match_cond(c):
-    def gen(name, dummy, action, options):
-        return  _match(name, c, action, options)
-    return gen
-
-def match_symbol(name, s, conv, options):
+def match_symbol(name, s, action, options):
     if isinstance(s, str):
         if len(s) != 1:
             raise Err("{} len != 1", s)
     elif s != empty:
         raise Err("{} is not a string", s)
-    return _match(name, s, conv, options)
 
-def match_string(name, s, conv, options):
+    custom_options = options.copy()
+    custom_options.is_remember = False
+
+    @parser(name, custom_options)
+    def fn(src):
+        v = src[0]
+        if v != s:
+            return _nomatch_res
+
+        v = action(v)
+        return (1, v) if v != nomatch else _nomatch_res
+
+    return fn
+
+
+def match_string(name, s, action, options):
     if not isinstance(s, str):
         raise Err("{} is not a string", s)
     slen = len(s)
@@ -240,12 +233,8 @@ def match_string(name, s, conv, options):
     def fn(src):
         if len(src) < slen:
             return _nomatch_res
-        if v == s:
-            v = conv(v)
-            return (slen, v) if v != nomatch else _nomatch_res
-        else:
-            return _nomatch_res
         v = str(src[0:slen])
+        return (slen, action(v)) if v == s else _nomatch_res
     return fn
 
 def match_iterable(name, pat, conv, options):

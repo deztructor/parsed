@@ -200,7 +200,7 @@ class CharRule(Rule):
         elif callable(c):
             if name is None:
                 name = c.__name__
-            self.fn = match_cond(c)
+            self.fn = match_symbol_predicate(c)
             if action is None: action = value
             c = nomatch
         else:
