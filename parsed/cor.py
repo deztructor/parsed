@@ -146,6 +146,14 @@ class Options(object):
     def copy(self):
         return Options(**dict(self.__options))
 
+    def __eq__(self, other):
+        return isinstance(other, Options) \
+            and self.__options == other.__options
+
+    def __ne__(self, other):
+        return  isinstance(other, Options) \
+            and self.__options != other.__options
+
 class Stopwatch(object):
     def __init__(self):
         self.reset()
