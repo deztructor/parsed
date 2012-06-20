@@ -5,8 +5,86 @@
 # Licensed under MIT License
 
 from parsed import *
-from parsed.cor import Err, log
+from parsed.cor import Err, log, prop_map
 import sys
+
+
+def xml_parser(ctx, options = mk_options()):
+    @rule
+    def name_start_char():
+            return ":" | within(ord('A'), ord('Z')) | "_" \
+                | within(ord('a'), ord('z')) | within(0xC0, 0xD6) \
+                | within(0xD8, 0xF6) | within(0xF8, 0x2FF) \
+                | within(0x370, 0x37D) | within(0x37F, 0x1FFF) \
+                | within(0x200C, 0x200D) | within(0x2070, 0x218F) \
+                | within(0x2C00, 0x2FEF) | within(0x3001, 0xD7FF) \
+                | within(0xF900, 0xFDCF) | within(0xFDF0, 0xFFFD) \
+                | within(0x10000, 0xEFFFF) > value
+
+    @rule
+    def name_char():
+        return name_start_char | "-" | "." | within(ord('0'), ord('9')) \
+            | char(chr(0xB7)) | within(0x0300, 0x036F) \
+            | within(0x203F, 0x2040) > value
+
+    @rule
+    def name():
+        return name_start_char + name_char[0:] > \
+            (lambda x: ctx.name(''.join([x[0], list2str(x[1])])))
+
+    @rule
+    def attr_end(): return ~ascii_digit > ignore
+    @rule
+    def attr_value(): return '"' + (~char('"'))[0:] + '"' \
+        > (lambda x: list2str(x[0]))
+    @rule
+    def attribute():
+        return spaces + name + spaces + '=' + spaces + attr_value & attr_end \
+            > (lambda x: ctx.attr(*x))
+    @rule
+    def attributes(): return attribute[0:] + spaces > first
+    @rule
+    def stag(): return spaces + '<' + name + attributes \
+            + (text('>') > ignore) > (lambda x: ctx.element(*x))
+    @rule
+    def etag(): return spaces + (text('</') > ignore) + name + '>' > first
+    @rule
+    def element(): return spaces + (empty_elem | n_empty_elem) + spaces > first
+    @rule
+    def xml_text(): return spaces + (~char('<'))[1:] > (lambda x: list2str(x[0]))
+    @rule
+    def child(): return element | comment | xml_text
+
+    @rule
+    def comment():
+        return spaces + (text('<!--') > ignore) + (~text('-->'))[0:] \
+            + (text('-->') > ignore) \
+            > (lambda x: ctx.comment(list2str(x[0])))
+    @rule
+    def n_empty_elem(): return stag + child[0:] + etag > \
+        (lambda x: ctx.element_close(*x))
+
+    @rule
+    def empty_elem():
+        return '<' + name + attributes + (text('/>') > ignore) > \
+            (lambda x: ctx.element(*x))
+    @rule
+    def pi():
+        return spaces + (text('<?') > ignore) + (text('xml') | text('XML')) \
+            + attributes + (text('?>') > ignore) \
+            > (lambda x: ctx.proc_instr(*x))
+    @rule
+    def misc(): return comment | pi
+    @rule
+    def xml_decl(): return pi
+    @rule
+    def prolog(): return spaces + xml_decl + misc[0:]
+    @rule
+    def document(): return prolog + element + misc[0:] > \
+        (lambda x: ctx.doc(x[0][0], x[0][1], x[1], x[2]))
+
+    return document(options)
+
 
 class XmlName(object):
     def __init__(self, name):
@@ -41,8 +119,6 @@ class XmlDocument(object):
             '\n'.join(str(x) for x in self.__misc_end))
 
     __str__ = __repr__
-        
-        
 
 class XmlAttr(object):
     def __init__(self, name, value):
@@ -76,7 +152,7 @@ class XmlElement(object):
 
     __str__ = __repr__
 
-class xProcInstr(object):
+class XmlProcInstr(object):
     def __init__(self, name, attributes):
         self.name = name
         self.attributes = attributes
@@ -91,98 +167,20 @@ class xProcInstr(object):
 
     __str__ = __repr__
 
-def x_doc(x):
-    (xml_decl, misc_begin), elem, misc_end = x
-    return XmlDocument(xml_decl, misc_begin, elem, misc_end)
+def element_close(elem, children, closing):
+    if str(elem.name) != str(closing):
+        raise Err("Element {} but closed with {}", elem.name, closing)
+    [elem.children.append(d) for d in children]
+    return elem
 
-def x_name(x):
-    return XmlName(x)
-
-def x_attr(x):
-    return XmlAttr(x[0], x[1])
-
-def x_tag(x):
-    return XmlElement(x[0], x[1])
-
-def x_pi(x):
-    return xProcInstr(x[0], x[1])
-
-def x_comment(x):
-    return XmlComment(list2str(x[0]))
-
-def x_tag_close(x):
-    oe, children, ce = x
-    if str(oe.name) != str(ce):
-        raise Err("Element {} but closed with {}", oe.name, ce)
-    [oe.children.append(d) for d in children]
-    return oe
-
-@rule
-def name_start_char():
-	return ":" | within(ord('A'), ord('Z')) | "_" \
-            | within(ord('a'), ord('z')) | within(0xC0, 0xD6) \
-            | within(0xD8, 0xF6) | within(0xF8, 0x2FF) \
-            | within(0x370, 0x37D) | within(0x37F, 0x1FFF) \
-            | within(0x200C, 0x200D) | within(0x2070, 0x218F) \
-            | within(0x2C00, 0x2FEF) | within(0x3001, 0xD7FF) \
-            | within(0xF900, 0xFDCF) | within(0xFDF0, 0xFFFD) \
-            | within(0x10000, 0xEFFFF) > value
-
-@rule
-def name_char():
-    return name_start_char | "-" | "." | within(ord('0'), ord('9')) \
-        | char(chr(0xB7)) | within(0x0300, 0x036F) \
-        | within(0x203F, 0x2040) > value
-
-@rule
-def name():
-    def mk_name(x): return x_name(''.join([x[0], list2str(x[1])]))
-    return name_start_char + name_char[0:] > mk_name
-
-@rule
-def attr_end(): return ~ascii_digit > ignore
-@rule
-def attr_value(): return '"' + (~char('"'))[0:] + '"' > (lambda x: list2str(x[0]))
-@rule
-def attribute():
-    return spaces + name + spaces + '=' + spaces + attr_value & attr_end \
-        > x_attr
-@rule
-def attributes(): return attribute[0:] + spaces > first
-@rule
-def stag(): return spaces + '<' + name + attributes \
-        + (text('>') > ignore) > x_tag
-@rule
-def etag(): return spaces + (text('</') > ignore) + name + '>' > first
-@rule
-def element(): return spaces + (empty_elem | n_empty_elem) + spaces > first
-@rule
-def xml_text(): return spaces + (~char('<'))[1:] > (lambda x: list2str(x[0]))
-@rule
-def child(): return element | comment | xml_text
-
-@rule
-def comment():
-    return spaces + (text('<!--') > ignore) + (~text('-->'))[0:] \
-        + (text('-->') > ignore) > x_comment
-@rule
-def n_empty_elem(): return stag + child[0:] + etag > x_tag_close
-@rule
-def empty_elem():
-    return '<' + name + attributes + (text('/>') > ignore) > x_tag
-@rule
-def pi():
-    return spaces + (text('<?') > ignore) + (text('xml') | text('XML')) \
-        + attributes + text('?>') \
-        > x_pi
-@rule
-def misc(): return comment | pi
-@rule
-def xml_decl(): return pi
-@rule
-def prolog(): return spaces + xml_decl + misc[0:]
-@rule
-def document(): return prolog + element + misc[0:] > x_doc
+xml_gen = prop_map('xmlgen',
+                   doc = XmlDocument,
+                   name = XmlName,
+                   attr = XmlAttr,
+                   element = XmlElement,
+                   proc_instr = XmlProcInstr,
+                   comment = XmlComment,
+                   element_close = element_close)
 
 
 if __name__ == '__main__':
@@ -192,7 +190,7 @@ if __name__ == '__main__':
 
     import parsed.cor as cor
     sw = cor.Stopwatch()
-    p = document(mk_options(is_trace = False, is_remember = True))
+    p = xml_parser(xml_gen, mk_options(is_trace = False, is_remember = True))
     print sw.dt
 
 
