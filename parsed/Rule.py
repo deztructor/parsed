@@ -130,16 +130,19 @@ class Rule(object):
             return self.parser
 
         self.parser = Forward(self.name)
-
-        data = self.data
-        if isinstance(data, Rule):
-            data = data(options)
-        elif not is_str(data) and is_iterable(data):
-            data = [x(options) for x in data]
-        parser = self.fn(self.name, data, self.action, options)
+        parser = self.fn(self.name, self._prepare_data(options),
+                         self.action, options)
         self.parser.fn = parser
         self.parser = parser
         return parser
+
+    def _prepare_data(self, options):
+        res = self.data
+        if isinstance(res, Rule):
+            res = res(options)
+        elif not is_str(res) and is_iterable(res):
+            res = [x(options) for x in res]
+        return res
 
 class TopRule(Rule):
     def __init__(self, fn, action = ignore):
