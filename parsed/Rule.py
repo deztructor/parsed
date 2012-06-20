@@ -247,7 +247,8 @@ class RangeRule(Rule):
 
 class LookaheadRule(Rule):
     def __init__(self, rule, name, action = ignore):
-        super(LookaheadRule, self).__init__(rule, '_'.join(['fwd', name]))
+        name = '_'.join(['fwd', name])
+        super(LookaheadRule, self).__init__(rule, name, action)
         self.fn = lookahead
 
     def __neg__(self):
