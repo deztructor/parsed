@@ -8,14 +8,24 @@ import collections
 import traceback
 import sys
 import time
+import types
 
 def is_iterable(v):
     return isinstance(v, collections.Iterable)
+
+def is_function(v):
+    return isinstance(v, types.FunctionType)
 
 def const(self_name_, base = object, **attrs):
     if not '__repr__' in attrs:
         attrs['__repr__'] = lambda *args: self_name_
     return type(self_name_, (base,), attrs)()
+
+def prop_map(prop_map_name_, **kwargs):
+    res = type(prop_map_name_, (object,), {})
+    [setattr(res, k, staticmethod(v) if is_function(v) else v) \
+     for (k, v) in kwargs.items()]
+    return res
 
 class Scope(object):
     def __init__(self, on_enter, on_exit):
