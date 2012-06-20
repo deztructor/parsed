@@ -12,7 +12,7 @@ from Common import *
 
 def rule(fn): return Rule.TopRule(fn)
 
-def char(c): return Rule.CharRule(c)
+def char(c): return Rule.mk_first_match_rule(c)
 def text(s): return Rule.StringRule(s)
 
 def source(src, begin = 0, end = None):

@@ -17,11 +17,25 @@ class Forward(object):
     def parse(self, src):
         return self.fn.parse(src)
 
+def mk_first_match_rule(c, name = None, action = None):
+    if c == empty:
+        cls = FirstEqualRule
+    elif is_iterable(c):
+        if len(c) == 1:
+            cls = FirstEqualRule
+        else:
+            cls = FirstEqualAnyRule
+    elif callable(c):
+        cls = FirstEqualPredRule
+    else:
+        raise Err("Don't know how to make match from {}", c)
+    return cls(c, name, action)
+
 def mk_rule(src):
     if isinstance(src, Rule):
         return src
-    if is_str(src):
-        return CharRule(src)
+    if is_iterable(src):
+        return mk_first_match_rule(src)
     raise Err("Can't make rule from {}", src)
 
 def mk_rule_seq(r1, r2, name):
@@ -179,40 +193,33 @@ class StringRule(Rule):
         self.fn = match_string
         super(StringRule, self).__init__(s, name, action)
 
-class CharRule(Rule):
+class FirstEqualRule(Rule):
     def __init__(self, c, name = None, action = None):
-        if c == empty:
-            if name is None:
-                name = 'nomatch?'
-            self.fn = match_symbol
-            if action is None: action = ignore
-        elif is_iterable(c):
-            if len(c) == 1:
-                if name is None:
-                    name = ''.join(['chr("', c, '")'])
-                self.fn = match_symbol
-                if action is None: action = ignore
-            else:
-                if name is None:
-                    name = ''.join(['any("', c, '")'])
-                self.fn = match_iterable
-                if action is None: action = value
-        elif callable(c):
-            if name is None:
-                name = c.__name__
-            self.fn = match_symbol_predicate(c)
-            if action is None: action = value
-            c = nomatch
-        else:
-            raise Err("Don't know how to make match from {}", c)
-        super(CharRule, self).__init__(c, name, action)
-
-class StringRule(Rule):
-    def __init__(self, s, name = None, action = value):
         if name is None:
-            name = ''.join(['str("', s, '")'])
-        self.fn = match_string
-        super(StringRule, self).__init__(s, name, action)
+            name = ''.join(['chr("', str(c), '")'])
+        self.fn = match_first
+        if action is None:
+            action = ignore
+        super(FirstEqualRule, self).__init__(c, name, action)
+
+class FirstEqualAnyRule(Rule):
+    def __init__(self, c, name = None, action = None):
+        if name is None:
+            name = ''.join(['any("', str(c), '")'])
+        self.fn = match_iterable
+        if action is None:
+            action = value
+        super(FirstEqualAnyRule, self).__init__(c, name, action)
+
+class FirstEqualPredRule(Rule):
+    def __init__(self, pred, name = None, action = None):
+        if name is None:
+            name = pred.__name__
+        self.fn = match_first_predicate(pred)
+        if action is None:
+            action = value
+        super(FirstEqualPredRule, self).__init__(nomatch, name, action)
+
 
 class RangeRule(Rule):
     def __init__(self, rule, from_to, name, action = value):

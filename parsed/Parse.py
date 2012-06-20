@@ -190,7 +190,7 @@ class InfiniteInput(object):
 #standard return if rule is not matched
 _nomatch_res = (0, nomatch)
 
-def match_symbol_predicate(pred):
+def match_first_predicate(pred):
     def wrapper(name, dummy, action, options):
         @parser(name, options)
         def fn(src):
@@ -203,7 +203,7 @@ def match_symbol_predicate(pred):
         return fn
     return wrapper
 
-def match_symbol(name, s, action, options):
+def match_first(name, s, action, options):
     if isinstance(s, str):
         if len(s) != 1:
             raise Err("{} len != 1", s)
