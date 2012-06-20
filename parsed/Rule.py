@@ -137,19 +137,35 @@ class Rule(object):
         return parser
 
     def _prepare_data(self, options):
-        res = self.data
-        if isinstance(res, Rule):
-            res = res(options)
-        elif not is_str(res) and is_iterable(res):
-            res = [x(options) for x in res]
-        return res
+        return self.data
+
+class Modifier(Rule):
+
+    def __init__(self, rule, name, action):
+        if not isinstance(rule, Rule):
+            raise Err("{} should be rule", rule)
+        super(Modifier, self).__init__(rule, name, action)
+
+    def _prepare_data(self, options):
+            return self.data(options)
+
+class Aggregate(Rule):
+
+    def __init__(self, rules, name, action):
+        for rule in rules:
+            if not isinstance(rule, Rule):
+                raise Err("{} should be rule", rule)
+        super(Aggregate, self).__init__(rules, name, action)
+
+    def _prepare_data(self, options):
+            return [x(options) for x in self.data]
 
 class TopRule(Rule):
     def __init__(self, fn, action = ignore):
         super(TopRule, self).__init__(fn, fn.__name__, action)
         self.fn = _mk_parser
 
-class SeqRule(Rule):
+class SeqRule(Aggregate):
     def __init__(self, rules, name, action = value):
         super(SeqRule, self).__init__(rules, name, action)
         self.fn = match_seq
@@ -168,7 +184,7 @@ class SeqRule(Rule):
         other = mk_rule_lookahead(other)
         return SeqRule((other,) + self.data, self.name)
 
-class ChoiceRule(Rule):
+class ChoiceRule(Aggregate):
     def __init__(self, rules, name, action = value):
         for r in rules:
             r.default_action = value
@@ -181,7 +197,7 @@ class ChoiceRule(Rule):
     def __ror__(self, other):
         return ChoiceRule((mk_rule(other),) + self.data, self.name)
 
-class NotRule(Rule):
+class NotRule(Modifier):
     def __init__(self, rule, name, action = value):
         super(NotRule, self).__init__(rule, name, action)
         self.fn = not_equal
@@ -223,7 +239,7 @@ class FirstEqualPredRule(Rule):
             action = value
         super(FirstEqualPredRule, self).__init__(nomatch, name, action)
 
-class RangeRule(Rule):
+class RangeRule(Modifier):
     def __init__(self, rule, from_to, name, action = value):
         super(RangeRule, self).__init__(rule, name, action)
         begin, end = from_to
@@ -245,7 +261,7 @@ class RangeRule(Rule):
         else:
             err()
 
-class LookaheadRule(Rule):
+class LookaheadRule(Modifier):
     def __init__(self, rule, name, action = ignore):
         name = '_'.join(['fwd', name])
         super(LookaheadRule, self).__init__(rule, name, action)
