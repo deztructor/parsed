@@ -14,8 +14,11 @@ class Forward(object):
     def __init__(self, name):
         self.name = ''.join(['>', name])
 
+    def use(self, parser):
+        self.__parser = parser
+
     def parse(self, src):
-        return self.fn.parse(src)
+        return self.__parser.parse(src)
 
 def mk_first_match_rule(c, name = None, action = None):
     if c == empty:
@@ -66,12 +69,13 @@ def _mk_parser(name, generator, action, options):
 class Rule(object):
 
     def __init__(self, data, name, action = ignore):
-        self.parser = None
         self.data = data
         self.name = name
         self.default_action = action
         self._action = None
         self.__integers = integers()
+        self.__parser = None
+        self.__options = None
 
     def __repr__(self):
         return ''.join([self.__class__.__name__,'(', repr(self.name), ')'])
@@ -125,15 +129,31 @@ class Rule(object):
     def __invert__(self):
         return NotRule(self, ''.join(['~', self.name]))
 
+    @property
+    def parser(self):
+        return self.__parser
+
+    def has_compatible_parser(self, options):
+        return self.__parser and self.__options == options
+
+    def __parser_declare(self, options):
+        self.__options = options
+        self.__parser = Forward(self.name)
+
+    def __parser_define(self, parser):
+        self.__parser.use(parser)
+        self.__parser = parser
+
     def __call__(self, options = default_options):
-        if self.parser:
+        if self.has_compatible_parser(options):
             return self.parser
 
-        self.parser = Forward(self.name)
-        parser = self.fn(self.name, self._prepare_data(options),
-                         self.action, options)
-        self.parser.fn = parser
-        self.parser = parser
+        self.__parser_declare(options)
+        parser = self.fn(self.name,
+                         self._prepare_data(options),
+                         self.action,
+                         options)
+        self.__parser_define(parser)
         return parser
 
     def _prepare_data(self, options):
