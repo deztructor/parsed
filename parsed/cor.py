@@ -12,10 +12,10 @@ import time
 def is_iterable(v):
     return isinstance(v, collections.Iterable)
 
-def const(name, base = object, **attrs):
+def const(self_name_, base = object, **attrs):
     if not '__repr__' in attrs:
-        attrs['__repr__'] = lambda *args: name
-    return type(name, (base,), attrs)()
+        attrs['__repr__'] = lambda *args: self_name_
+    return type(self_name_, (base,), attrs)()
 
 class Scope(object):
     def __init__(self, on_enter, on_exit):
