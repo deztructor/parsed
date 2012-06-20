@@ -58,7 +58,7 @@ class CachingParser(Parser):
 class Tracer(object):
 
     debug_indent_level = 0
-    debug_indent_sym = '  '
+    debug_indent_sym = ' ' * 2
 
     def __indent_plus(self):
         Tracer.debug_indent_level += 1
@@ -159,12 +159,6 @@ class InfiniteInput(object):
         else:
             return empty
 
-    def __str__(self):
-        return str(self.__s[self.__begin:self._end()])
-
-    def __repr__(self):
-        return ''.join(['"', str(self), '"'])
-
     def __len__(self):
         return self._end() - self.__begin
 
@@ -176,7 +170,7 @@ class InfiniteInput(object):
                 pos += 1
         return gen()
 
-    def as_string(self):
+    def __str__(self):
         if isinstance(self.__s, str):
             if self.__begin == 0 and self.__is_endless:
                 return self.__s
@@ -188,6 +182,10 @@ class InfiniteInput(object):
             res = [x for x in self.__s]
             res.append(chr(0))
             return ''.join(res)
+
+    def __repr__(self):
+        return cor.wrap("'", self)
+
 
 #standard return if rule is not matched
 _nomatch_res = (0, nomatch)
@@ -242,12 +240,12 @@ def match_string(name, s, conv, options):
     def fn(src):
         if len(src) < slen:
             return _nomatch_res
-        v = src[0:slen].as_string()
         if v == s:
             v = conv(v)
             return (slen, v) if v != nomatch else _nomatch_res
         else:
             return _nomatch_res
+        v = str(src[0:slen])
     return fn
 
 def match_iterable(name, pat, conv, options):
