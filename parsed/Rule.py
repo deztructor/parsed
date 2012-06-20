@@ -207,6 +207,13 @@ class CharRule(Rule):
             raise Err("Don't know how to make match from {}", c)
         super(CharRule, self).__init__(c, name, action)
 
+class StringRule(Rule):
+    def __init__(self, s, name = None, action = value):
+        if name is None:
+            name = ''.join(['str("', s, '")'])
+        self.fn = match_string
+        super(StringRule, self).__init__(s, name, action)
+
 class RangeRule(Rule):
     def __init__(self, rule, from_to, name, action = value):
         super(RangeRule, self).__init__(rule, name, action)
