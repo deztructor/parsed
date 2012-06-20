@@ -220,7 +220,6 @@ class FirstEqualPredRule(Rule):
             action = value
         super(FirstEqualPredRule, self).__init__(nomatch, name, action)
 
-
 class RangeRule(Rule):
     def __init__(self, rule, from_to, name, action = value):
         super(RangeRule, self).__init__(rule, name, action)
