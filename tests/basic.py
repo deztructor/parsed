@@ -52,13 +52,13 @@ class TestRulesGeneration(unittest.TestCase):
 
     def test_char_generator(self):
         r = self.char_generator(mk_options())
-        self.assertIsInstance(r, P.Parser)
+        self.assertIsInstance(r, P.Rule)
         self.assertEqual(r.name, 'test_rule?')
 
         r2 = self.char_generator(mk_options(is_remember = False))
         self.assertIsNot(r2, r)
         self.assertEqual(r2.name, 'test_rule?')
-        self.assertIsInstance(r2, P.Parser)
+        self.assertIsInstance(r2, P.Rule)
 
     def test_generator_cache(self):
         r = self.char_generator(mk_options())

@@ -9,7 +9,7 @@ from cor import Err
 from Common import *
 
 
-class Parser(object):
+class Rule(object):
 
     def __init__(self, fn, name):
         self.parse = fn
@@ -31,12 +31,12 @@ class Parser(object):
     def cache_clear(self):
         pass
 
-class CachingParser(Parser):
+class CachingRule(Rule):
 
     _cache_hits = 0
 
     def __init__(self, fn, name):
-        super(CachingParser, self).__init__(fn, name)
+        super(CachingRule, self).__init__(fn, name)
         self.__fn = self.parse
         self.parse = self.__parse
         self.__cache = dict()
@@ -44,7 +44,7 @@ class CachingParser(Parser):
     def __parse(self, src):
         apos = src.absolute_pos
         if apos in self.__cache:
-            CachingParser._cache_hits += 1
+            CachingRule._cache_hits += 1
             return self.__cache[apos]
         res = self.__fn(src)
         self.__cache[apos] = res
@@ -106,7 +106,7 @@ def parser(name, options):
         return ''.join([name, '?'])
 
     def decorate(match_fn):
-        cls = CachingParser if options.is_remember else Parser
+        cls = CachingRule if options.is_remember else Rule
         fn = cls(match_fn, mk_name(name))
         if options.is_trace:
             return Tracer(fn)
