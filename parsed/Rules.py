@@ -12,7 +12,7 @@ from Common import *
 class Rule(object):
 
     def __init__(self, fn, name):
-        self.parse = fn
+        self.match = fn
         self.__name__ = name
         self.__children = tuple()
 
@@ -37,11 +37,11 @@ class CachingRule(Rule):
 
     def __init__(self, fn, name):
         super(CachingRule, self).__init__(fn, name)
-        self.__fn = self.parse
-        self.parse = self.__parse
+        self.__fn = self.match
+        self.match = self.__match
         self.__cache = dict()
 
-    def __parse(self, src):
+    def __match(self, src):
         apos = src.absolute_pos
         if apos in self.__cache:
             CachingRule._cache_hits += 1
@@ -70,38 +70,38 @@ class Tracer(object):
         indent = Tracer.debug_indent_sym * Tracer.debug_indent_level
         cor.log("{}{}", indent, msg.format(*args, **kwargs))
 
-    def __init__(self, parser):
+    def __init__(self, rule):
         self.__indent = cor.Scope(self.__indent_plus,
                                   self.__indent_minus)
-        self.__parser = parser
-        self.__name__ = parser.__name__
+        self.__rule = rule
+        self.__name__ = rule.__name__
 
-    def parse(self, src):
+    def match(self, src):
         pr = src if len(src) < 20 else ''.join([str(src[:20]), '...'])
         pr = cor.escape_str(pr)
         self.debug_print("{}({}) {{", self.__name__, cor.wrap('"', pr))
         with self.__indent:
-            res = self.__parser.parse(src)
+            res = self.__rule.match(src)
         self.debug_print("}} => {}", cor.printable_args(res))
         return res
 
     @property
     def children(self):
-        return self.__parser.children
+        return self.__rule.children
 
     @children.setter
     def children(self, v):
-        self.__parser.children = v
+        self.__rule.children = v
 
     @property
     def name(self):
         return self.__name__
 
     def cache_clear(self):
-        return self.__parser.cache_clear()
+        return self.__rule.cache_clear()
 
 
-def parser(name, options):
+def rule(name, options):
     def mk_name(name):
         return ''.join([name, '?'])
 
@@ -191,7 +191,7 @@ _nomatch_res = (0, nomatch)
 
 def match_first_predicate(pred):
     def wrapper(name, dummy, action, options):
-        @parser(name, options)
+        @rule(name, options)
         def fn(src):
             v = src[0]
             if pred(v):
@@ -218,7 +218,7 @@ def match_first(name, s, action, options):
     custom_options = options.copy()
     custom_options.is_remember = False
 
-    @parser(name, custom_options)
+    @rule(name, custom_options)
     def fn(src):
         v = src[0]
         if v != s:
@@ -239,7 +239,7 @@ def match_string(name, s, action, options):
         if isinstance(s, unicode):
             s = s.encode()
     slen = len(s)
-    @parser(name, options)
+    @rule(name, options)
     def fn(src):
         if len(src) < slen:
             return _nomatch_res
@@ -252,7 +252,7 @@ def match_iterable(name, pat, conv, options):
         raise Err("Don't know what to do with {}", seq)
 
     seq = [x for x in pat] if isinstance(pat, str) else pat
-    @parser(name, options)
+    @rule(name, options)
     def fn(src):
         v = src[0]
         if v in seq:
@@ -263,10 +263,10 @@ def match_iterable(name, pat, conv, options):
     return fn
 
 def match_any(name, tests, conv, options):
-    @parser(name, options)
+    @rule(name, options)
     def fn(src):
         for test in tests:
-            pos, value = test.parse(src)
+            pos, value = test.match(src)
             if value != nomatch:
                 value = conv(value)
                 if (value != nomatch):
@@ -276,12 +276,12 @@ def match_any(name, tests, conv, options):
     return fn
 
 def match_seq(name, tests, conv, options):
-    @parser(name, options)
+    @rule(name, options)
     def fn(src):
         total = []
         pos = 0
         for test in tests:
-            dpos, value = test.parse(src[pos:])
+            dpos, value = test.match(src[pos:])
             if value == nomatch:
                 return _nomatch_res
             if value != empty:
@@ -293,18 +293,18 @@ def match_seq(name, tests, conv, options):
     return fn
 
 def one_more(name, test, conv, options):
-    @parser(name, options)
+    @rule(name, options)
     def fn(src):
         total = []
         pos = 0
-        dpos, value = test.parse(src)
+        dpos, value = test.match(src)
         if value == nomatch:
             return _nomatch_res
         while value != nomatch:
             if value != empty:
                 total.append(value)
             pos += dpos
-            dpos, value = test.parse(src[pos:])
+            dpos, value = test.match(src[pos:])
         res = conv(total)
         return (pos, res) if res != nomatch else _nomatch_res
     fn.children = list((test,))
@@ -312,12 +312,12 @@ def one_more(name, test, conv, options):
 
 def mk_closed_range(begin, end):
     def closed_range(name, test, conv, options):
-        @parser(name, options)
+        @rule(name, options)
         def fn(src):
             count = 0
             total = []
             pos = 0
-            dpos, value = test.parse(src)
+            dpos, value = test.match(src)
             if value == nomatch:
                 return _nomatch_res
             while value != nomatch:
@@ -327,7 +327,7 @@ def mk_closed_range(begin, end):
                 if value != empty:
                     total.append(value)
                 pos += dpos
-                dpos, value = test.parse(src[pos:])
+                dpos, value = test.match(src[pos:])
             if count >= begin:
                 res = conv(total)
                 return (pos, res) if res != nomatch else _nomatch_res
@@ -339,25 +339,25 @@ def mk_closed_range(begin, end):
     return closed_range
 
 def zero_more(name, test, conv, options):
-    @parser(name, options)
+    @rule(name, options)
     def fn(src):
         total = []
         pos = 0
-        dpos, value = test.parse(src)
+        dpos, value = test.match(src)
         while value != nomatch:
             if value != empty:
                 total.append(value)
             pos += dpos
-            dpos, value = test.parse(src[pos:])
+            dpos, value = test.match(src[pos:])
         res = conv(total)
         return (pos, res) if res != nomatch else _nomatch_res
     fn.children = list((test,))
     return fn
 
 def range_0_1(name, test, conv, options):
-    @parser(name, options)
+    @rule(name, options)
     def fn(src):
-        pos, value = test.parse(src)
+        pos, value = test.match(src)
         if value == nomatch:
             pos, value = (0, empty)
 
@@ -367,11 +367,11 @@ def range_0_1(name, test, conv, options):
     return fn
 
 def not_equal(name, test, conv, options):
-    @parser(name, options)
+    @rule(name, options)
     def fn(src):
         if src[0] == empty:
             return _nomatch_res
-        pos, value = test.parse(src)
+        pos, value = test.match(src)
         if value == nomatch:
             value = conv(src[0])
             return (1, value) if value != nomatch else _nomatch_res
@@ -381,9 +381,9 @@ def not_equal(name, test, conv, options):
     return fn
 
 def lookahead(name, test, conv, options):
-    @parser(name, options)
+    @rule(name, options)
     def fn(src):
-        pos, value = test.parse(src)
+        pos, value = test.match(src)
         if value != nomatch:
             value = conv(value)
             return (0, value) if value != nomatch else _nomatch_res

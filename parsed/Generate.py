@@ -4,7 +4,7 @@
 # Copyright (c) 2012 Denis Zalevskiy
 # Licensed under MIT License
 
-from Rule import *
+from Rules import *
 from cor import is_iterable, Err, integers
 from Common import *
 
@@ -14,11 +14,11 @@ class Forward(object):
     def __init__(self, name):
         self.name = ''.join(['>', name])
 
-    def use(self, parser):
-        self.__parser = parser
+    def use(self, rule):
+        self.__rule = rule
 
-    def parse(self, src):
-        return self.__parser.parse(src)
+    def match(self, src):
+        return self.__rule.match(src)
 
 def mk_first_match_rule(c):
     if c == empty:

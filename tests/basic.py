@@ -7,7 +7,7 @@
 from parsed.Rules import InfiniteInput
 import unittest
 from parsed import mk_options, rule, char, cache_clean
-import parsed.Parse as P
+import parsed.Rules as Rules
 
 class TestInfiniteInput(unittest.TestCase):
 
@@ -52,13 +52,13 @@ class TestRulesGeneration(unittest.TestCase):
 
     def test_char_generator(self):
         r = self.char_generator(mk_options())
-        self.assertIsInstance(r, P.Rule)
+        self.assertIsInstance(r, Rules.Rule)
         self.assertEqual(r.name, 'test_rule?')
 
         r2 = self.char_generator(mk_options(is_remember = False))
         self.assertIsNot(r2, r)
         self.assertEqual(r2.name, 'test_rule?')
-        self.assertIsInstance(r2, P.Rule)
+        self.assertIsInstance(r2, Rules.Rule)
 
     def test_generator_cache(self):
         r = self.char_generator(mk_options())

@@ -203,6 +203,6 @@ if __name__ == '__main__':
     s = source(s)
 
     sw.reset()
-    res = p.parse(s)
+    res = p.match(s)
     print sw.dt, CachingRule._cache_hits
     print res

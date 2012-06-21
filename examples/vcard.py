@@ -168,7 +168,7 @@ g = grammar(VCardCtx(), mk_options(is_remember = True,
 
 from parsed.Rules import CachingRule
 s = Stopwatch()
-pos, value = g.parse(source(unicode(vc)))
+pos, value = g.match(source(unicode(vc)))
 print s.dt, CachingRule._cache_hits
 print value
 #g.cache_clear()
