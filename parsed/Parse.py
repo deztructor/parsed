@@ -203,9 +203,15 @@ def match_first_predicate(pred):
     return wrapper
 
 def match_first(name, s, action, options):
-    if isinstance(s, str):
+    if isinstance(s, str) or isinstance(s, unicode):
         if len(s) != 1:
             raise Err("{} len != 1", s)
+        if options.use_unicode:
+            if isinstance(s, str):
+                s = s.decode()
+        else:
+            if isinstance(s, unicode):
+                s = s.encode()
     elif s != empty:
         raise Err("{} is not a string", s)
 
@@ -225,8 +231,14 @@ def match_first(name, s, action, options):
 
 
 def match_string(name, s, action, options):
-    if not isinstance(s, str):
+    if not (isinstance(s, str) or isinstance(s, unicode)):
         raise Err("{} is not a string", s)
+    if options.use_unicode:
+        if isinstance(s, str):
+            s = s.decode()
+    else:
+        if isinstance(s, unicode):
+            s = s.encode()
     slen = len(s)
     @parser(name, options)
     def fn(src):

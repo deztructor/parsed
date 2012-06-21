@@ -7,7 +7,7 @@
 from parsed import *
 from parsed.cor import Err, log, prop_map
 import sys
-
+import codecs
 
 def xml_parser(ctx, options = mk_options()):
     @rule
@@ -24,7 +24,7 @@ def xml_parser(ctx, options = mk_options()):
     @rule
     def name_char():
         return name_start_char | "-" | "." | within(ord('0'), ord('9')) \
-            | char(chr(0xB7)) | within(0x0300, 0x036F) \
+            | within(0xC2B7, 0xC2B7) | within(0x0300, 0x036F) \
             | within(0x203F, 0x2040) > value
 
     @rule
@@ -190,14 +190,16 @@ if __name__ == '__main__':
 
     import parsed.cor as cor
     sw = cor.Stopwatch()
-    p = xml_parser(xml_gen, mk_options(is_trace = False, is_remember = True))
+    p = xml_parser(xml_gen, mk_options(is_trace = False,
+                                       is_remember = True,
+                                       use_unicode = True))
     print sw.dt
 
 
     from parsed.Parse import CachingParser
 
-    with open(sys.argv[1], "r") as f:
-        s = '\n'.join(f.readlines())
+    with codecs.open(sys.argv[1], encoding = 'utf-8') as f:
+        s = u'\n'.join(f.readlines())
     s = source(s)
 
     sw.reset()

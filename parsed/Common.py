@@ -18,10 +18,11 @@ third = nth(2)
 def list2str(x): return ''.join(x)
 
 def is_str(c):
-    return isinstance(c, str) or c == empty
+    return isinstance(c, str) or isinstance(c, unicode) or c == empty
 
 def mk_options(**kwargs):
-    res = Options(is_trace = False, is_remember = True)
+    res = Options(is_trace = False, is_remember = True,
+                  use_unicode = False)
     res.update(kwargs)
     return res
 
