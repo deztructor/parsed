@@ -16,6 +16,7 @@ def first(x): return x[0]
 second = nth(1)
 third = nth(2)
 def list2str(x): return ''.join(x)
+def str_from(idx): return lambda x: list2str(x[idx])
 
 def is_str(c):
     return isinstance(c, str) or isinstance(c, unicode) or c == empty
