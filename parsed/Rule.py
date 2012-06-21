@@ -20,7 +20,7 @@ class Forward(object):
     def parse(self, src):
         return self.__parser.parse(src)
 
-def mk_first_match_rule(c, name = None, action = None):
+def mk_first_match_rule(c):
     if c == empty:
         cls = FirstEqualRule
     elif is_iterable(c):
@@ -32,7 +32,7 @@ def mk_first_match_rule(c, name = None, action = None):
         cls = FirstEqualPredRule
     else:
         raise Err("Don't know how to make match from {}", c)
-    return cls(c, name, action)
+    return cls(c)
 
 def mk_rule(src):
     if isinstance(src, Rule):
