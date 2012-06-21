@@ -179,8 +179,7 @@ class InfiniteInput(object):
             else:
                 return self.__s[self.__begin:self._end()]
         else:
-            res = [x for x in self.__s]
-            res.append(chr(0))
+            res = [str(x) for x in self]
             return ''.join(res)
 
     def __repr__(self):
