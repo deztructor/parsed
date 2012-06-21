@@ -77,7 +77,7 @@ class Tracer(object):
         self.__name__ = rule.__name__
 
     def match(self, src):
-        pr = src if len(src) < 20 else ''.join([str(src[:20]), '...'])
+        pr = str(src) if len(src) < 20 else ''.join([str(src[:20]), '...'])
         pr = cor.escape_str(pr)
         self.debug_print("{}({}) {{", self.__name__, cor.wrap('"', pr))
         with self.__indent:
