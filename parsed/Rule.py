@@ -143,6 +143,9 @@ class Rule(object):
         self.__parser.use(parser)
         self.__parser = parser
 
+    def parser_cache_reset(self):
+        self.__parser = None
+
     def __call__(self, options = default_options):
         if self.has_compatible_parser(options):
             return self.parser

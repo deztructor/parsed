@@ -6,6 +6,8 @@
 
 from parsed.Parse import InfiniteInput
 import unittest
+from parsed import mk_options, rule, char, cache_clean
+import parsed.Parse as P
 
 class TestInfiniteInput(unittest.TestCase):
 
@@ -40,6 +42,46 @@ class TestInfiniteInput(unittest.TestCase):
         a1 = str(self.src[:3])
         a2 = str(self.tgt[:3])
         self.assertEqual(a1, a2)
+
+class TestRulesGeneration(unittest.TestCase):
+
+    def setUp(self):
+        @rule
+        def test_rule(): return char('1')
+        self.char_generator = test_rule
+
+    def test_char_generator(self):
+        r = self.char_generator(mk_options())
+        self.assertIsInstance(r, P.Parser)
+        self.assertEqual(r.name, 'test_rule?')
+
+        r2 = self.char_generator(mk_options(is_remember = False))
+        self.assertIsNot(r2, r)
+        self.assertEqual(r2.name, 'test_rule?')
+        self.assertIsInstance(r2, P.Parser)
+
+    def test_generator_cache(self):
+        r = self.char_generator(mk_options())
+        r2 = self.char_generator(mk_options())
+        self.assertIs(r, r2)
+
+        self.char_generator.parser_cache_reset()
+        r2 = self.char_generator(mk_options())
+        self.assertIsNot(r, r2)
+
+        r22 = self.char_generator(mk_options())
+        self.assertIs(r22, r2)
+
+        cache_clean(self.__dict__)
+
+        r23 = self.char_generator(mk_options())
+        self.assertIsNot(r23, r22)
+
+        r3 = self.char_generator(mk_options(is_remember = False))
+        self.assertIsNot(r3, r2)
+
+        r4 = self.char_generator(mk_options(is_remember = False))
+        self.assertIs(r4, r3)
 
 if __name__ == '__main__':
     unittest.main()

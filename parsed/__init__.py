@@ -23,7 +23,7 @@ def cache_clean(rules_dict):
     call'''
     for x in rules_dict.values():
         if isinstance(x, Rule.Rule):
-            x.parser = None
+            x.parser_cache_reset()
 
 
 @rule
