@@ -68,8 +68,7 @@ def _mk_parser(name, generator, action, options):
 
 class Rule(object):
 
-    def __init__(self, data, name, action = ignore):
-        self.data = data
+    def __init__(self, name, action = ignore):
         self.name = name
         self.default_action = action
         self._action = None
@@ -150,24 +149,31 @@ class Rule(object):
 
         self.__parser_declare(options)
         parser = self.fn(self.name,
-                         self._prepare_data(options),
+                         self._prepare_context(options),
                          self.action,
                          options)
         self.__parser_define(parser)
         return parser
 
-    def _prepare_data(self, options):
-        return self.data
+class RuleWithData(Rule):
+
+    def __init__(self, data, name, action):
+        self.data = data
+        super(RuleWithData, self).__init__(name, action)
+
+    def _prepare_context(self, options):
+            return self.data
 
 class Modifier(Rule):
 
     def __init__(self, rule, name, action):
         if not isinstance(rule, Rule):
             raise Err("{} should be rule", rule)
-        super(Modifier, self).__init__(rule, name, action)
+        self.rule = rule
+        super(Modifier, self).__init__(name, action)
 
-    def _prepare_data(self, options):
-            return self.data(options)
+    def _prepare_context(self, options):
+            return self.rule(options)
 
 class Aggregate(Rule):
 
@@ -175,12 +181,13 @@ class Aggregate(Rule):
         for rule in rules:
             if not isinstance(rule, Rule):
                 raise Err("{} should be rule", rule)
-        super(Aggregate, self).__init__(rules, name, action)
+        self.rules = rules
+        super(Aggregate, self).__init__(name, action)
 
-    def _prepare_data(self, options):
-            return [x(options) for x in self.data]
+    def _prepare_context(self, options):
+            return [x(options) for x in self.rules]
 
-class TopRule(Rule):
+class TopRule(RuleWithData):
     def __init__(self, fn, action = ignore):
         super(TopRule, self).__init__(fn, fn.__name__, action)
         self.fn = _mk_parser
@@ -191,18 +198,18 @@ class SeqRule(Aggregate):
         self.fn = match_seq
 
     def __add__(self, other):
-        return SeqRule(self.data + (mk_rule(other),), self.name)
+        return SeqRule(self.rules + (mk_rule(other),), self.name)
 
     def __radd__(self, other):
-        return SeqRule((mk_rule(other),) + self.data, self.name)
+        return SeqRule((mk_rule(other),) + self.rules, self.name)
 
     def __and__(self, other):
         other = mk_rule_lookahead(other)
-        return SeqRule(self.data + (other,), self.name)
+        return SeqRule(self.rules + (other,), self.name)
 
     def __rand__(self, other):
         other = mk_rule_lookahead(other)
-        return SeqRule((other,) + self.data, self.name)
+        return SeqRule((other,) + self.rules, self.name)
 
 class ChoiceRule(Aggregate):
     def __init__(self, rules, name, action = value):
@@ -212,10 +219,10 @@ class ChoiceRule(Aggregate):
         self.fn = match_any
 
     def __or__(self, other):
-        return ChoiceRule(self.data + (mk_rule(other),), self.name)
+        return ChoiceRule(self.rules + (mk_rule(other),), self.name)
 
     def __ror__(self, other):
-        return ChoiceRule((mk_rule(other),) + self.data, self.name)
+        return ChoiceRule((mk_rule(other),) + self.rules, self.name)
 
 class NotRule(Modifier):
     def __init__(self, rule, name, action = value):
@@ -223,16 +230,16 @@ class NotRule(Modifier):
         self.fn = not_equal
 
     def __invert__(self):
-        return self.data
+        return self.rule
 
-class StringRule(Rule):
+class StringRule(RuleWithData):
     def __init__(self, s, name = None, action = value):
         if name is None:
             name = ''.join(['str("', s, '")'])
         self.fn = match_string
         super(StringRule, self).__init__(s, name, action)
 
-class FirstEqualRule(Rule):
+class FirstEqualRule(RuleWithData):
     def __init__(self, c, name = None, action = None):
         if name is None:
             name = ''.join(['chr("', str(c), '")'])
@@ -241,7 +248,7 @@ class FirstEqualRule(Rule):
             action = ignore
         super(FirstEqualRule, self).__init__(c, name, action)
 
-class FirstEqualAnyRule(Rule):
+class FirstEqualAnyRule(RuleWithData):
     def __init__(self, c, name = None, action = None):
         if name is None:
             name = ''.join(['any("', str(c), '")'])
@@ -250,7 +257,7 @@ class FirstEqualAnyRule(Rule):
             action = value
         super(FirstEqualAnyRule, self).__init__(c, name, action)
 
-class FirstEqualPredRule(Rule):
+class FirstEqualPredRule(RuleWithData):
     def __init__(self, pred, name = None, action = None):
         if name is None:
             name = pred.__name__
