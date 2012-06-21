@@ -228,7 +228,7 @@ class ChoiceRule(Aggregate):
         return ChoiceRule((mk_rule(other),) + self.rules, self.name)
 
 class NotRule(Modifier):
-    def __init__(self, rule, name, action = value):
+    def __init__(self, rule, name, action = ignore):
         super(NotRule, self).__init__(rule, name, action)
         self.fn = not_equal
 

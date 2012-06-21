@@ -381,7 +381,7 @@ def not_equal(name, test, conv, options):
         pos, value = test.match(src)
         if value == nomatch:
             value = conv(src[0])
-            return (1, value) if value != nomatch else _nomatch_res
+            return (0, value) if value != nomatch else _nomatch_res
         else:
             return _nomatch_res
     fn.children = list((test,))

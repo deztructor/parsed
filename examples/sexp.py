@@ -33,7 +33,9 @@ def number(): return atom_float | atom_dec | atom_hex > value
 @rule
 def escaped(): return '\\' + any_char > (lambda x: unescape(first(x)))
 @rule
-def str_chrs(): return (escaped | ~char('"'))[0:] > list2str
+def ne_dquote(): return ~char('"') + any_char > second
+@rule
+def str_chrs(): return escaped | ne_dquote[0:] > list2str
 @rule
 def dquoted_str(): return '"' + str_chrs + '"' > first
 
@@ -56,7 +58,7 @@ def atom_end(): return space | '(' | ')' | ';' | eol > ignore
 @rule
 def atom(): return atom_body & atom_end > first
 @rule
-def comment(): return ';' + ~eol[0:] + eol >\
+def comment(): return ';' + ne_eol[0:] + eol >\
         (lambda x: list2str(x[0]))
 @rule
 def list_item(): return spaces + sexp > first
@@ -69,6 +71,6 @@ def sexp(): return comment | alist | atom > value
 #default_options.is_trace = True
 # cache_clean(globals())
 
-p = sexp(mk_options(is_trace = False))
+p = sexp(mk_options(is_trace = True))
 s = source('(1 2;er\n#f "dd")')
 print p.match(s)

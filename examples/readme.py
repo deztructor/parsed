@@ -78,9 +78,9 @@ test_parser(hashed_abc_or_abc, '#e')
 
 #### Negation
 
-#any character except 'a'
+#any character except 'a', does not consume input
 @rule
-def not_a(): return ~char('a')
+def not_a(): return ~char('a') + any_char
 
 test_parser(not_a, 'ba')
 test_parser(not_a, 'ab')
@@ -115,7 +115,7 @@ test_parser(maybe_a, 'aa')
 #### Lookahead
 
 #character 'a', matches only if followed by any character from 'abc'
-#set, do not consume the following character
+#set, does not consume input
 @rule
 def a_before_abc(): return char('a') + -char('abc')
 

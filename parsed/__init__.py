@@ -37,6 +37,8 @@ def crlf(): return text('\r\n') > ignore
 @rule
 def eol(): return eof | vspace > ignore
 @rule
+def ne_eol(): return ~eol + any_char > ignore
+@rule
 def eof(): return char(empty) > ignore
 @rule
 def space(): return char(' \n\r\t') > ignore
@@ -47,7 +49,7 @@ def vspaces(): return vspace[0:] > ignore
 @rule
 def hspaces(): return hspace[0:] > ignore
 @rule
-def any_char(): return ~eof > value
+def any_char(): return anything > value
 @rule
 def digit_dec() : return char('0123456789') > value
 @rule

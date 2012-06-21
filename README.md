@@ -89,7 +89,7 @@ Short circuiting 'OR':
 
 #### Negation
 
-        #any character except 'a'
+        #any character except 'a', does not consume input
         @rule
         def not_a(): return ~char('a')
 
@@ -113,7 +113,7 @@ Lookahead can be expressed or negating (adding prefix '-' operator) a
 rule or by appending rule to sequence using bitwise AND ('&') operator.
 
         #character 'a', matches only if followed by any character from 'abc'
-        #set, do not consume the following character
+        #set, does not consume input
         @rule
         def a_before_abc(): return char('a') + -char('abc')
 

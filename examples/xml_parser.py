@@ -33,13 +33,12 @@ def xml_parser(ctx, options = mk_options()):
             (lambda x: ctx.name(''.join([x[0], list2str(x[1])])))
 
     @rule
-    def attr_end(): return ~ascii_digit > ignore
-    @rule
-    def attr_value(): return '"' + (~char('"'))[0:] + '"' \
+    def attr_value(): return '"' + (~char('"') + any_char > first)[0:] + '"' \
         > (lambda x: list2str(x[0]))
     @rule
     def attribute():
-        return spaces + name + spaces + '=' + spaces + attr_value & attr_end \
+        return spaces + name + spaces + '=' + spaces \
+            + attr_value + ~ascii_digit \
             > (lambda x: ctx.attr(*x))
     @rule
     def attributes(): return attribute[0:] + spaces > first
@@ -51,13 +50,15 @@ def xml_parser(ctx, options = mk_options()):
     @rule
     def element(): return spaces + (empty_elem | n_empty_elem) + spaces > first
     @rule
-    def xml_text(): return spaces + (~char('<'))[1:] > (lambda x: list2str(x[0]))
+    def xml_text(): return spaces + (~char('<') + any_char > first)[1:] \
+        > str_from(0)
     @rule
     def child(): return element | comment | xml_text
 
     @rule
     def comment():
-        return spaces + (text('<!--') > ignore) + (~text('-->'))[0:] \
+        return spaces + (text('<!--') > ignore) \
+            + (~text('-->') + any_char > first)[0:] \
             + (text('-->') > ignore) \
             > (lambda x: ctx.comment(list2str(x[0])))
     @rule

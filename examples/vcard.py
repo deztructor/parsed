@@ -29,7 +29,7 @@ def grammar(ctx, options = mk_options(is_trace = False)):
 
     @rule
     def ne_end():
-        return ~(text('END:') | text('BEGIN:')) > ignore
+        return ~(text('END:') | text('BEGIN:')) + any_char > ignore
 
     @rule
     def iana_token(): return (ascii_digit | '-')[1:] > list2str
@@ -66,7 +66,7 @@ def grammar(ctx, options = mk_options(is_trace = False)):
 
     @rule
     def text_begin():
-        return (~(crlf))[1:] + crlf > (lambda x: list2str(x[0]))
+        return (~crlf + any_char > first)[1:] + crlf > str_from(0)
 
     @rule
     def text_continue():
