@@ -229,7 +229,6 @@ def match_first(name, s, action, options):
 
     return fn
 
-
 def match_string(name, s, action, options):
     if not (isinstance(s, str) or isinstance(s, unicode)):
         raise Err("{} is not a string", s)

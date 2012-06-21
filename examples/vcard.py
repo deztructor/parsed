@@ -155,4 +155,5 @@ END:VCARD\r
 g = grammar(VCardCtx(), mk_options(is_remember = False))
 
 pos, value = g.parse(source(vc))
+from parsed.Rules import CachingParser
 print value

@@ -6,23 +6,24 @@
 
 import string
 
-import Rule
-import Parse
+import Generate
+import Rules
 from Common import *
 
-def rule(fn): return Rule.TopRule(fn)
+def rule(fn): return Generate.TopRule(fn)
 
-def char(c): return Rule.mk_first_match_rule(c)
-def text(s): return Rule.StringRule(s)
+def char(c): return Generate.mk_first_match_rule(c)
+def text(s): return Generate.StringRule(s)
+def equal(c): return Generate.FirstEqualRule(c)
 
 def source(src, begin = 0, end = None):
-    return Parse.InfiniteInput(src, begin, end)
+    return Rules.InfiniteInput(src, begin, end)
 
 def cache_clean(rules_dict):
     '''rules_dict is ordinary result of grammar module globals()
     call'''
     for x in rules_dict.values():
-        if isinstance(x, Rule.Rule):
+        if isinstance(x, Generate.Rule):
             x.parser_cache_reset()
 
 

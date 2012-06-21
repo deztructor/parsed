@@ -4,7 +4,7 @@
 # Copyright (c) 2012 Denis Zalevskiy
 # Licensed under MIT License
 
-from Parse import *
+from Rule import *
 from cor import is_iterable, Err, integers
 from Common import *
 

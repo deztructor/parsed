@@ -4,7 +4,7 @@
 # Copyright (c) 2012 Denis Zalevskiy
 # Licensed under MIT License
 
-from parsed.Parse import InfiniteInput
+from parsed.Rules import InfiniteInput
 import unittest
 from parsed import mk_options, rule, char, cache_clean
 import parsed.Parse as P

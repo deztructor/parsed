@@ -196,7 +196,7 @@ if __name__ == '__main__':
     print sw.dt
 
 
-    from parsed.Parse import CachingParser
+    from parsed.Rules import CachingParser
 
     with codecs.open(sys.argv[1], encoding = 'utf-8') as f:
         s = u'\n'.join(f.readlines())
