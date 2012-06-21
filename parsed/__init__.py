@@ -16,6 +16,7 @@ def char(c): return Generate.mk_first_match_rule(c)
 def text(s): return Generate.StringRule(s)
 def equal(c): return Generate.FirstEqualRule(c)
 
+anything = Generate.FirstConsumeRule()
 def source(src, begin = 0, end = None):
     return Rules.InfiniteInput(src, begin, end)
 

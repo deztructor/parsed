@@ -269,6 +269,13 @@ class FirstEqualPredRule(RuleWithData):
             action = value
         super(FirstEqualPredRule, self).__init__(nomatch, name, action)
 
+class FirstConsumeRule(RuleWithData):
+    def __init__(self, action = None):
+        self.fn = match_always
+        if action is None:
+            action = value
+        super(FirstConsumeRule, self).__init__(nomatch, 'anything', action)
+
 class RangeRule(Modifier):
     def __init__(self, rule, from_to, name, action = value):
         super(RangeRule, self).__init__(rule, name, action)

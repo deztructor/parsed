@@ -275,6 +275,13 @@ def match_any(name, tests, conv, options):
     fn.children = tests
     return fn
 
+def match_always(name, dummy, action, options):
+    @rule(name, options)
+    def fn(src):
+        v = action(src[0])
+        return (1, v) if v != nomatch else _nomatch_res
+    return fn
+
 def match_seq(name, tests, conv, options):
     @rule(name, options)
     def fn(src):
