@@ -28,8 +28,13 @@ class Rule(object):
     def name(self):
         return self.__name__
 
+    def parse(self, src):
+        self.cache_clear()
+        return self.match(src)
+
     def cache_clear(self):
-        pass
+        if len(self.children):
+            [x.cache_clear() for x in self.children]
 
 class CachingRule(Rule):
 
@@ -75,6 +80,9 @@ class Tracer(object):
                                   self.__indent_minus)
         self.__rule = rule
         self.__name__ = rule.__name__
+
+    def parse(self, src):
+        return self.match(src)
 
     def match(self, src):
         pr = str(src) if len(src) < 20 else ''.join([str(src[:20]), '...'])
