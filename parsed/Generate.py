@@ -5,7 +5,7 @@
 # Licensed under MIT License
 
 from Rules import *
-from cor import is_iterable, Err, integers
+from cor import is_iterable, Err, integers, track, log
 from Common import *
 
 inf = const('inf')
@@ -30,6 +30,7 @@ def mk_first_match_rule(c):
             cls = FirstEqualAnyRule
     elif callable(c):
         cls = FirstEqualPredRule
+        c = match_first_predicate(c)
     else:
         raise Err("Don't know how to make match from {}", c)
     return cls(c)
@@ -60,15 +61,32 @@ def mk_rule_choice(r1, r2, name):
     r2 = mk_rule(r2)
     return ChoiceRule((r1, r2), name)
 
-def _mk_parser(name, generator, action, options):
-    rule = generator()
-    rule.name = name
-    parser = rule(options)
-    return parser
+def mk_rule_range(rule, from_to, name):
+    begin, end = from_to
+    def err(): raise Err("Can't handle {} range", from_to)
+    if begin == inf or end == 0:
+        err()
+
+    if not begin:
+        if end == inf:
+            fn = zero_more
+        elif end == 1:
+            fn = range_0_1
+        else:
+            err()
+    elif begin == 1 and end == inf:
+        fn = one_more
+    elif end != inf and begin <= end:
+        fn = mk_closed_range(begin, end)
+    else:
+        err()
+
+    return RangeRule(rule, fn, name)
+
 
 class Rule(object):
 
-    def __init__(self, name, action = ignore):
+    def __init__(self, name, action):
         self.name = name
         self.default_action = action
         self._action = None
@@ -77,7 +95,10 @@ class Rule(object):
         self.__options = None
 
     def __repr__(self):
-        return ''.join([self.__class__.__name__,'(', repr(self.name), ')'])
+        action_name = self.action.__name__ if self.action else ''
+        return '{:s}({}, {})'.format(self.__class__.__name__,
+                                     repr(self.name),
+                                     repr(action_name))
 
     @property
     def _next_child_name(self):
@@ -105,18 +126,23 @@ class Rule(object):
 
     def __getitem__(self, k):
         if not isinstance(k, slice):
-            return RangeRule(self, (k, k), self._next_child_name)
+            return mk_rule_range(self, (k, k), self._next_child_name)
 
         if not (k.step is None or k.step == 1):
             raise cor.Err("Can't handle step != 1")
         start, stop = k.start, k.stop
         r = (0 if start is None else start,
              inf if stop is None else stop)
-        return RangeRule(self, r, self._next_child_name)
+        return mk_rule_range(self, r, self._next_child_name)
 
     def __gt__(self, action):
-        self._action = action
-        return self
+        if self._action == action:
+            return self
+        res = self.copy
+        if action.__name__ == '<lambda>':
+            action.__name__ = ''.join(['!', self.name])
+        res._action = action
+        return res
 
     @property
     def action(self):
@@ -164,6 +190,10 @@ class RuleWithData(Rule):
         self.data = data
         super(RuleWithData, self).__init__(name, action)
 
+    @property
+    def copy(self):
+        return self.__class__(self.data, self.name, self.default_action)
+
     def _prepare_context(self, options):
             return self.data
 
@@ -174,6 +204,10 @@ class Modifier(Rule):
             raise Err("{} should be rule", rule)
         self.rule = rule
         super(Modifier, self).__init__(name, action)
+
+    @property
+    def copy(self):
+        return self.__class__(self.rule, self.name, self.default_action)
 
     def _prepare_context(self, options):
             return self.rule(options)
@@ -187,13 +221,29 @@ class Aggregate(Rule):
         self.rules = rules
         super(Aggregate, self).__init__(name, action)
 
+    @property
+    def copy(self):
+        return self.__class__(self.rules, self.name, self.default_action)
+
     def _prepare_context(self, options):
             return [x(options) for x in self.rules]
 
 class TopRule(RuleWithData):
-    def __init__(self, fn, action = ignore):
-        super(TopRule, self).__init__(fn, fn.__name__, action)
-        self.fn = _mk_parser
+    def __init__(self, fn):
+        super(TopRule, self).__init__(fn, fn.__name__, None)
+        self.fn = self._mk_parser
+
+    def _mk_parser(self, name, generator, action, options):
+        rule = generator()
+        rule.name = '.'.join([name, rule.name])
+        if action is not None:
+            rule._action = action
+        parser = rule(options)
+        return parser
+
+    @property
+    def copy(self):
+        return self.__class__(self.data)
 
 class SeqRule(Aggregate):
     def __init__(self, rules, name, action = value):
@@ -264,10 +314,14 @@ class FirstEqualPredRule(RuleWithData):
     def __init__(self, pred, name = None, action = None):
         if name is None:
             name = pred.__name__
-        self.fn = match_first_predicate(pred)
+        self.fn = pred
         if action is None:
             action = value
         super(FirstEqualPredRule, self).__init__(nomatch, name, action)
+
+    @property
+    def copy(self):
+        return self.__class__(self.fn, self.name, self.default_action)
 
 class FirstConsumeRule(RuleWithData):
     def __init__(self, action = None):
@@ -276,27 +330,18 @@ class FirstConsumeRule(RuleWithData):
             action = value
         super(FirstConsumeRule, self).__init__(nomatch, 'anything', action)
 
-class RangeRule(Modifier):
-    def __init__(self, rule, from_to, name, action = value):
-        super(RangeRule, self).__init__(rule, name, action)
-        begin, end = from_to
-        def err(): raise Err("Can't handle {} range", from_to)
-        if begin == inf or end == 0:
-            err()
+    @property
+    def copy(self):
+        return self.__class__(self.default_action)
 
-        if not begin:
-            if end == inf:
-                self.fn = zero_more
-            elif end == 1:
-                self.fn = range_0_1
-            else:
-                err()
-        elif begin == 1 and end == inf:
-            self.fn = one_more
-        elif end != inf and begin <= end:
-            self.fn = mk_closed_range(begin, end)
-        else:
-            err()
+class RangeRule(Modifier):
+    def __init__(self, rule, fn, name):
+        super(RangeRule, self).__init__(rule, name, value)
+        self.fn = fn
+
+    @property
+    def copy(self):
+        return self.__class__(self.rule, self.fn, self.name)
 
 class LookaheadRule(Modifier):
     def __init__(self, rule, name, action = ignore):
