@@ -125,10 +125,10 @@ class InfiniteInput(object):
     def __init__(self, src, begin = 0, end = None):
         self.__s = src
         self.__begin = begin
+
         self.absolute_pos = src.absolute_pos + begin \
                             if hasattr(src, 'absolute_pos') \
                                else begin
-            
         self.__is_endless = end is None
         if end is None:
             self._end = lambda: len(src)
@@ -183,7 +183,7 @@ class InfiniteInput(object):
             return ''.join(res)
 
     def __repr__(self):
-        return cor.wrap("'", self)
+        return cor.wrap("'", str(self))
 
 
 #standard return if rule is not matched
