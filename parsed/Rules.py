@@ -175,7 +175,6 @@ class InfiniteInput(object):
             self._end = lambda: len(src)
         else:
             self._end = lambda: end
-        self.__cached_end = None
 
     def __get_slice(self, k):
         start, stop = k.start, k.stop
@@ -194,21 +193,14 @@ class InfiniteInput(object):
     def __getitem__(self, i):
         if isinstance(i, slice):
             return self.__get_slice(i)
-        if self.__cached_end is None:
-            self.__cached_end = self._end()
-
-        end = self.__cached_end
+        end = self._end()
         i = self.__begin + i
-        if i >= end:
-            end = self._end()
-            if end > self.__cached_end:
-                self.__cached_end = end
         if i < end:
             return self.__s[i]
-        elif i == end:
-            return empty
+        elif i > self.len_limit:
+            raise Err("Length limit is reached")
         else:
-            raise Err("Over the end")
+            return empty
 
     def __len__(self):
         return self._end() - self.__begin
