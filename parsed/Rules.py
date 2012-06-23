@@ -145,6 +145,8 @@ class InfiniteInput(object):
 
     def __get_slice(self, k):
         start, stop = k.start, k.stop
+        if start == 0 and stop is None:
+            return self
         if not (k.step is None or k.step == 1):
             raise cor.Err("Can't handle step != 1")
         if start is None:
