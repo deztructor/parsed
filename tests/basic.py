@@ -84,15 +84,24 @@ class TestRulesGeneration(unittest.TestCase):
         r4 = self.char_generator(mk_options(is_remember = False))
         self.assertIs(r4, r3)
 
-class TestChar(unittest.TestCase):
+
+class MatchTestBase(unittest.TestCase):
+
+    def basic_match(self, gen, s, expected, options = mk_options()):
+        r = gen(options)
+        src = source(s)
+        res = r.parse(src)
+        self.assertEqual(res, expected)
+
+class TestChar(MatchTestBase):
 
     def setUp(self):
         @rule
-        def a(): return char('a') > (lambda x: 'a' + x)
+        def a(): return char('a') > (lambda x: 'A' + x)
         self.a = a
 
         @rule
-        def b(): return char('b') > (lambda x: 'b' + x)
+        def b(): return char('b') > (lambda x: 'B' + x)
         self.b = b
 
         @rule
@@ -104,51 +113,18 @@ class TestChar(unittest.TestCase):
         self.assertIsInstance(a, Rules.Rule)
 
     def test_match(self):
-        a = self.a()
-
-        pos, v = a.parse(source('ab'))
-        self.assertEqual(pos, 1)
-        self.assertEqual(v, 'aa')
+        self.basic_match(self.a, source('ab'), (1, 'Aa'))
 
     def test_no_match(self):
-        a = self.a()
-
-        pos, v = a.parse(source('ba'))
-        self.assertEqual(pos, 0)
-        self.assertEqual(v, nomatch)
+        self.basic_match(self.a, source('ba'), (0, nomatch))
 
     def test_derived(self):
-        a = self.a()
-        a2 = self.a2()
-
-        pos, v = a.parse(source('ab'))
-        self.assertEqual(pos, 1)
-        self.assertEqual(v, 'aa')
-
-        src = source('ab')
-        pos, v = a2.parse(src)
-        self.assertEqual(pos, 1)
-        self.assertEqual(v, 'a2a')
+        self.basic_match(self.a, source('ab'), (1, 'Aa'))
+        self.basic_match(self.a2, source('ab'), (1, 'a2Aa'))
 
     def test_independent(self):
-        src = source('ab')
-        a = self.a()
-        res = a.parse(src)
-        self.assertEqual(res, (1, 'aa'))
-
-        b = self.b()
-        src = source('ba')
-        pos, v = b.parse(src)
-        self.assertEqual(pos, 1)
-        self.assertEqual(v, 'bb')
-
-class TestBase(unittest.TestCase):
-
-    def basic_match(self, gen, s, expected, options = mk_options()):
-        r = gen(options)
-        src = source(s)
-        res = r.parse(src)
-        self.assertEqual(res, expected)
+        self.basic_match(self.a, source('ab'), (1, 'Aa'))
+        self.basic_match(self.b, source('ba'), (1, 'Bb'))
 
 
 class TestPredicates(unittest.TestCase):
@@ -181,15 +157,15 @@ class TestPredicates(unittest.TestCase):
 
         a2 = self.a2()
         res = a2.parse(src)
-        self.assertEqual(res, (1, 'a2x'))
+        self.assertEqual(res, (1, 'a2ax'))
 
-class TestChoice(TestBase):
+class TestChoice(MatchTestBase):
 
     def setUp(self):
         @rule
-        def a(): return char('a') > (lambda x: 'a' + x)
+        def a(): return char('a') > (lambda x: 'A' + x)
         @rule
-        def b(): return char('b') > (lambda x: 'b' + x)
+        def b(): return char('b') > (lambda x: 'B' + x)
         @rule
         def c(): return a | b > (lambda x: 'c' + x)
         @rule
@@ -206,19 +182,86 @@ class TestChoice(TestBase):
         self.assertIsInstance(c, Rules.CachingRule)
 
     def test_choice(self):
-        self.basic_match(self.c, 'ab', (1, 'ca'))
+        self.basic_match(self.c, 'ab', (1, 'cAa'))
 
     def test_indep_rules(self):
         c = self.c()
         c2 = self.c2()
         self.assertNotEqual(c, c2)
 
-        self.basic_match(self.c1, 'ab', (1, 'c1a'))
-        self.basic_match(self.c1, 'ba', (1, 'c1b'))
-        self.basic_match(self.c2, 'ab', (1, 'c2a'))
+        self.basic_match(self.c1, 'ab', (1, 'c1cAa'))
+        self.basic_match(self.c1, 'ba', (1, 'c1cBb'))
+        self.basic_match(self.c2, 'ab', (1, 'c2Aa'))
         self.basic_match(self.c2, 'xab', (1, 'c2x'))
 
-class TestWithin(TestBase):
+class TestSeq(MatchTestBase):
+
+    def setUp(self):
+        @rule
+        def a(): return char('a') > (lambda x: 'A' + x)
+        @rule
+        def b(): return char('b') > (lambda x: 'B' + x)
+        @rule
+        def c(): return a + b > value
+        @rule
+        def c1(): return c > (lambda x: x[0] + x[1])
+
+        self.c = c
+        self.c1 = c1
+
+    def test_memoization_default(self):
+        c = self.c()
+        self.assertIsInstance(c, Rules.CachingRule)
+
+    def test_seq(self):
+        self.basic_match(self.c, 'ab', (2, ['Aa', 'Bb']))
+
+    def test_indep_rules(self):
+        c = self.c()
+        c1 = self.c1()
+        self.assertNotEqual(c, c1)
+
+        self.basic_match(self.c1, 'ab', (2, 'AaBb'))
+
+class TestRange(MatchTestBase):
+
+    def setUp(self):
+        @rule
+        def a(): return char('a') > (lambda x: 'v' + x)
+        @rule
+        def b(): return a[0:] > (lambda x: ('x', x))
+
+        self.a = a
+        self.b = b
+
+    def test_memoization_default(self):
+        b = self.b()
+        self.assertIsInstance(b, Rules.CachingRule)
+
+    def test_0more(self):
+        self.basic_match(self.b, 'aa', (2, ('x', ['va', 'va'])))
+
+class TestComplex(MatchTestBase):
+
+    def setUp(self):
+        @rule
+        def a(): return char('a') > (lambda x: 'A' + x)
+        @rule
+        def aplus(): return a[0:] > (lambda x: (len(x), x))
+        @rule
+        def c(): return char('c') > (lambda x: ('C', x))
+        @rule
+        def ac(): return c | aplus > (lambda x: ('AC', x))
+
+        self.a = a
+        self.aplus = aplus
+        self.c = c
+        self.ac = ac
+
+    def test_ac(self):
+        self.basic_match(self.ac, 'aa', (2, ('AC', (2, ['Aa', 'Aa']))))
+
+class TestWithin(MatchTestBase):
 
     def setUp(self):
         @rule
@@ -234,7 +277,7 @@ class TestWithin(TestBase):
         self.basic_match(self.a, 'cde', (1, 'ac'))
         self.basic_match(self.a, '-bcd', (0, nomatch))
 
-class TestDefault(TestBase):
+class TestDefault(MatchTestBase):
 
     def test_vspace(self):
         self.basic_match(vspace, '\r', (1, empty))
