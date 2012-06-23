@@ -12,8 +12,8 @@ import codecs
 def xml_parser(ctx, options = mk_options()):
     @rule
     def name_start_char():
-            return ":" | within(ord('A'), ord('Z')) | "_" \
-                | within(ord('a'), ord('z')) | within(0xC0, 0xD6) \
+            return within(ord('A'), ord('Z')) | within(ord('a'), ord('z')) \
+                | ":" | "_" | within(0xC0, 0xD6) \
                 | within(0xD8, 0xF6) | within(0xF8, 0x2FF) \
                 | within(0x370, 0x37D) | within(0x37F, 0x1FFF) \
                 | within(0x200C, 0x200D) | within(0x2070, 0x218F) \
@@ -44,7 +44,7 @@ def xml_parser(ctx, options = mk_options()):
     def attributes(): return attribute[0:] + spaces > first
     @rule
     def stag(): return spaces + '<' + name + attributes \
-            + (text('>') > ignore) > (lambda x: ctx.element(*x))
+            + char('>') > (lambda x: ctx.element(*x))
     @rule
     def etag(): return spaces + (text('</') > ignore) + name + '>' > first
     @rule
@@ -101,7 +101,7 @@ class XmlComment(object):
         self.content = content
 
     def __repr__(self):
-        return '<--{:s}-->'.format(self.content)
+        return '<!--{:s}-->'.format(self.content)
 
     __str__ = __repr__
 
@@ -122,12 +122,13 @@ class XmlDocument(object):
     __str__ = __repr__
 
 class XmlAttr(object):
+
     def __init__(self, name, value):
         self.name = name
         self.value = value
 
     def __repr__(self):
-        return '='.join([str(self.name), repr(self.value)])
+        return '='.join([str(self.name), cor.wrap('"', str(self.value))])
 
     __str__ = __repr__
 
@@ -189,21 +190,44 @@ if __name__ == '__main__':
         log("Call {} <svg file path>\n", sys.argv[0])
         exit(1)
 
-    import parsed.cor as cor
-    sw = cor.Stopwatch()
-    p = xml_parser(xml_gen, mk_options(is_trace = False,
-                                       is_remember = True,
-                                       use_unicode = True))
-    print sw.dt
+    def example():
+        import parsed.cor as cor
+        sw = cor.Stopwatch()
+        options = mk_options(is_trace = False,
+                             is_remember = True,
+                             use_unicode = True,
+                             is_stat = False)
+        p = xml_parser(xml_gen, options)
+        print sw.dt
 
 
-    from parsed.Rules import CachingRule
+        from parsed.Rules import CachingRule
 
-    with codecs.open(sys.argv[1], encoding = 'utf-8') as f:
-        s = u'\n'.join(f.readlines())
-    s = source(s)
+        with codecs.open(sys.argv[1], encoding = 'utf-8') as f:
+            s = u'\n'.join(f.readlines())
 
-    sw.reset()
-    res = p.match(s)
-    print sw.dt, CachingRule._cache_hits
-    print res
+        sw.reset()
+        pos, value = p.parse(s)
+        print sw.dt, CachingRule._cache_hits
+        if options.is_stat:
+            def flat_stat(src):
+                stat = []
+                if src is None:
+                    return None
+                info, children = src
+                if isinstance(info, tuple):
+                    stat.append(info)
+                if cor.is_iterable(children):
+                    for x in children:
+                        res = flat_stat(x)
+                        if not res is None:
+                            stat += res
+                return stat
+            stat = flat_stat(p.stat)
+            stat = sorted(stat, key = lambda x: x[1].misses)
+            print '\n'.join([repr(x) for x in stat])
+        #print value
+
+    import cProfile
+    #cProfile.run('example()')
+    example()

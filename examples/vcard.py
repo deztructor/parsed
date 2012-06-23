@@ -162,13 +162,20 @@ EMAIL;TYPE=WORK:dude@nowhere.com\r
 END:VCARD\r
 '''
 
-g = grammar(VCardCtx(), mk_options(is_remember = True,
-                                   is_trace = False,
-                                   use_unicode = True))
+def foo():
+    global vc
+    g = grammar(VCardCtx(), mk_options(is_remember = True,
+                                       is_trace = False,
+                                       use_unicode = False))
 
-from parsed.Rules import CachingRule
-s = Stopwatch()
-pos, value = g.match(source(unicode(vc)))
-print s.dt, CachingRule._cache_hits
-print value
+    from parsed.Rules import CachingRule
+    s = Stopwatch()
+    pos, value = g.parse(vc)
+    print s.dt, CachingRule._cache_hits
+    print value
+
+foo()
+import cProfile
+#cProfile.run('foo()')
+
 #g.cache_clear()

@@ -73,4 +73,4 @@ def sexp(): return comment | alist | atom > value
 
 p = sexp(mk_options(is_trace = True))
 s = source('(1 2;er\n#f "dd")')
-print p.match(s)
+print p.parse(s)
