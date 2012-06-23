@@ -135,6 +135,7 @@ class Options(object):
         if name.startswith('_Options__'):
             self.__dict__[name] = value
         else:
+            value = staticmethod(value) if is_function(value) else value
             self.__options[name] = value
 
     def __dir__(self):
@@ -153,6 +154,10 @@ class Options(object):
     def __ne__(self, other):
         return  isinstance(other, Options) \
             and self.__options != other.__options
+
+    def __repr__(self):
+        return ', '.join(['='.join([n, repr(getattr(self, n))]) \
+                          for n in dir(self)])
 
 class Stopwatch(object):
     def __init__(self):
