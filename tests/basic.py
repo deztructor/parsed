@@ -4,44 +4,10 @@
 # Copyright (c) 2012 Denis Zalevskiy
 # Licensed under MIT License
 
-from parsed.Rules import InfiniteInput
 import unittest
 from parsed import *
 import parsed.Rules as Rules
 
-class TestInfiniteInput(unittest.TestCase):
-
-    def setUp(self):
-        self.src = u'0123456789'
-        self.tgt = InfiniteInput(self.src)
-
-    def test_iter(self):
-        a1 = [x for x in self.src]
-        a2 = [x for x in self.tgt]
-        self.assertEqual(a1, a2)
-
-    def test_slice_iter(self):
-        a1 = [x for x in self.src[:3]]
-        a2 = [x for x in self.tgt[:3]]
-        self.assertEqual(a1, a2)
-
-        a1 = [x for x in self.src[1:2]]
-        a2 = [x for x in self.tgt[1:2]]
-        self.assertEqual(a1, a2)
-
-        a1 = [x for x in self.src[1:]]
-        a2 = [x for x in self.tgt[1:]]
-        self.assertEqual(a1, a2)
-
-    def test_str(self):
-        a1 = str(self.src)
-        a2 = str(self.tgt)
-        self.assertEqual(a1, a2)
-
-    def test_slice_str(self):
-        a1 = str(self.src[:3])
-        a2 = str(self.tgt[:3])
-        self.assertEqual(a1, a2)
 
 class TestRulesGeneration(unittest.TestCase):
 
@@ -87,9 +53,8 @@ class TestRulesGeneration(unittest.TestCase):
 
 class MatchTestBase(unittest.TestCase):
 
-    def basic_match(self, gen, s, expected, options = mk_options()):
+    def basic_match(self, gen, src, expected, options = mk_options()):
         r = gen(options)
-        src = source(s)
         res = r.parse(src)
         self.assertEqual(res, expected)
 
@@ -113,18 +78,18 @@ class TestChar(MatchTestBase):
         self.assertIsInstance(a, Rules.Rule)
 
     def test_match(self):
-        self.basic_match(self.a, source('ab'), (1, 'Aa'))
+        self.basic_match(self.a, 'ab', (1, 'Aa'))
 
     def test_no_match(self):
-        self.basic_match(self.a, source('ba'), (0, nomatch))
+        self.basic_match(self.a, 'ba', (0, nomatch))
 
     def test_derived(self):
-        self.basic_match(self.a, source('ab'), (1, 'Aa'))
-        self.basic_match(self.a2, source('ab'), (1, 'a2Aa'))
+        self.basic_match(self.a, 'ab', (1, 'Aa'))
+        self.basic_match(self.a2, 'ab', (1, 'a2Aa'))
 
     def test_independent(self):
-        self.basic_match(self.a, source('ab'), (1, 'Aa'))
-        self.basic_match(self.b, source('ba'), (1, 'Bb'))
+        self.basic_match(self.a, 'ab', (1, 'Aa'))
+        self.basic_match(self.b, 'ba', (1, 'Bb'))
 
 
 class TestPredicates(unittest.TestCase):
@@ -145,13 +110,13 @@ class TestPredicates(unittest.TestCase):
 
     def test_predicate(self):
         a = self.a()
-        src = source('x')
+        src = 'x'
         res = a.parse(src)
         self.assertEqual(res, (1, 'ax'))
 
     def test_derived(self):
         a = self.a()
-        src = source('x')
+        src = 'x'
         res = a.parse(src)
         self.assertEqual(res, (1, 'ax'))
 
@@ -305,11 +270,11 @@ class TestDefault(MatchTestBase):
 
     def test_ascii(self):
         a = ascii(mk_options())
-        pos, v = a.parse(source('ab'))
+        pos, v = a.parse('ab')
         self.assertEqual(pos, 1)
         self.assertEqual(v, 'a')
 
-        pos, v = a.parse(source('%'))
+        pos, v = a.parse('%')
         self.assertEqual(pos, 0)
         self.assertEqual(v, nomatch)
 

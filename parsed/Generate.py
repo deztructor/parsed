@@ -14,14 +14,21 @@ class Forward(object):
     def __init__(self, name):
         self.name = ''.join(['>', name])
 
-    def _get_stat(self, cookie):
-        return self.__rule._get_stat(cookie)
+    def _get_stat(self):
+        return self.__rule._get_stat()
 
     def use(self, rule):
         self.__rule = rule
 
-    def match(self, src):
-        return self.__rule.match(src)
+    def match(self, src, pos):
+        return self.__rule.match(src, pos)
+
+    @property
+    def children(self):
+        return self.__rule.children
+
+    def _cache_clear(self):
+        return self.__rule._cache_clear()
 
 def mk_first_match_rule(c):
     if c == empty:

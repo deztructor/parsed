@@ -15,40 +15,28 @@ class Rule(object):
             self.__fn = fn
             self.match = self.__match_stat
             self.__stat = cor.Options(hits = 0, misses = 0)
-            self.__stat_cookie = None
         else:
             self.match = fn
         self.__name__ = name
         self.__children = tuple()
 
-    def __match_stat(self, src):
-        pos, value = self.__fn(src)
+    def __match_stat(self, src, pos):
+        pos, value = self.__fn(src, pos)
         if value == nomatch:
             self.__stat.misses += 1
         else:
             self.__stat.hits += 1
         return pos, value
 
-    def _get_stat(self, cookie):
-        if self.__stat_cookie == cookie:
-            return None
-        self.__stat_cookie = cookie
-        if not hasattr(self, '_Rule__stat'):
-            return []
-        res = [(self.__name__, self.__stat)] + \
-              [x._get_stat(cookie) for x in self.children]
-        self.__stat_cookie = None
-        return res
+    def _get_stat(self):
+        return (self.__name__, self.__stat)
 
     @property
     def stat(self):
         if not hasattr(self, '_Rule__stat'):
             return []
-        self.__stat_cookie = self
-        res = [(self.__name__, self.__stat)] + \
-              [x._get_stat(self) for x in self.children]
-        self.__stat_cookie = None
-        return res
+        return cor.apply_on_graph(self, lambda x: x._get_stat,
+                                  lambda x: x.children)
 
     @property
     def children(self):
@@ -64,11 +52,14 @@ class Rule(object):
 
     def parse(self, src):
         self.cache_clear()
-        return self.match(src)
+        return self.match(src, 0)
+
+    def _cache_clear(self):
+        pass
 
     def cache_clear(self):
-        if len(self.children):
-            [x.cache_clear() for x in self.children]
+        return cor.apply_on_graph(self, lambda x: x._cache_clear,
+                                  lambda x: x.children)
 
 class CachingRule(Rule):
 
@@ -79,19 +70,16 @@ class CachingRule(Rule):
         super(CachingRule, self).__init__(self.__match, name, options)
         self.__cache = dict()
 
-    def __match(self, src):
-        apos = src.absolute_pos
-        if apos in self.__cache:
+    def __match(self, src, pos):
+        if pos in self.__cache:
             CachingRule._cache_hits += 1
-            return self.__cache[apos]
-        res = self.__fn(src)
-        self.__cache[apos] = res
+            return self.__cache[pos]
+        res = self.__fn(src, pos)
+        self.__cache[pos] = res
         return res
 
-    def cache_clear(self):
+    def _cache_clear(self):
         self.__cache = dict()
-        if len(self.children):
-            [x.cache_clear() for x in self.children]
 
 class Tracer(object):
 
@@ -115,14 +103,16 @@ class Tracer(object):
         self.__name__ = rule.__name__
 
     def parse(self, src):
-        return self.match(src)
+        return self.match(src, 0)
 
-    def match(self, src):
-        pr = str(src) if len(src) < 20 else ''.join([str(src[:20]), '...'])
+    def match(self, src, pos):
+        dend = len(src) - pos
+        pr = str(src[pos:]) if dend <= 20 \
+             else ''.join([str(src[pos:pos + 20]), '...'])
         pr = cor.escape_str(pr)
         self.debug_print("{}({}) {{", self.__name__, cor.wrap('"', pr))
         with self.__indent:
-            res = self.__rule.match(src)
+            res = self.__rule.match(src, pos)
         self.debug_print("}} => {}", cor.printable_args(res))
         return res
 
@@ -156,87 +146,17 @@ def rule(name, options):
 
     return decorate
 
-class InfiniteInput(object):
-    '''imitates virtually infinite random access vector, returns empty
-    after the end of source input
-    '''
-
-    len_limit = 1024 * 1024 * 128
-
-    def __init__(self, src, begin = 0, end = None):
-        self.__s = src
-        self.__begin = begin
-
-        self.absolute_pos = src.absolute_pos + begin \
-                            if hasattr(src, 'absolute_pos') \
-                               else begin
-        self.__is_endless = end is None
-        if end is None:
-            self._end = lambda: len(src)
-        else:
-            self._end = lambda: end
-
-    def __get_slice(self, k):
-        start, stop = k.start, k.stop
-        if start == 0 and stop is None:
-            return self
-        if not (k.step is None or k.step == 1):
-            raise cor.Err("Can't handle step != 1")
-        if start is None:
-            start = self.__begin
-        else:
-            start = min(self.__begin + start, len(self.__s))
-        if not stop is None:
-            stop = min(self.__begin + stop, len(self.__s))
-        return InfiniteInput(self.__s, start, stop)
-
-    def __getitem__(self, i):
-        if isinstance(i, slice):
-            return self.__get_slice(i)
-        end = self._end()
-        i = self.__begin + i
-        if i < end:
-            return self.__s[i]
-        elif i > self.len_limit:
-            raise Err("Length limit is reached")
-        else:
-            return empty
-
-    def __len__(self):
-        return self._end() - self.__begin
-
-    def __iter__(self):
-        def gen():
-            pos = 0
-            while pos < len(self):
-                yield self[pos]
-                pos += 1
-        return gen()
-
-    def __str__(self):
-        if isinstance(self.__s, str):
-            if self.__begin == 0 and self.__is_endless:
-                return self.__s
-            elif self.__is_endless:
-                return self.__s[self.__begin:]
-            else:
-                return self.__s[self.__begin:self._end()]
-        else:
-            res = [str(x) for x in self]
-            return ''.join(res)
-
-    def __repr__(self):
-        return cor.wrap("'", str(self))
-
-
 #standard return if rule is not matched
 _nomatch_res = (0, nomatch)
 
 def match_first_predicate(pred):
     def wrapper(name, dummy, action, options):
         @rule(name, options)
-        def fn(src):
-            v = src[0]
+        def fn(src, pos):
+            try:
+                v = src[pos]
+            except IndexError as e:
+                v = empty
             if pred(v):
                 v = action(v)
                 return (1, v) if v != nomatch else _nomatch_res
@@ -262,14 +182,16 @@ def match_first(name, s, action, options):
     custom_options.is_remember = False
 
     @rule(name, custom_options)
-    def fn(src):
-        v = src[0]
+    def fn(src, pos):
+        try:
+            v = src[pos]
+        except IndexError as e:
+            v = empty
         if v != s:
             return _nomatch_res
 
         v = action(v)
         return (1, v) if v != nomatch else _nomatch_res
-
     return fn
 
 def match_string(name, s, action, options):
@@ -283,10 +205,13 @@ def match_string(name, s, action, options):
             s = s.encode()
     slen = len(s)
     @rule(name, options)
-    def fn(src):
-        if len(src) < slen:
+    def fn(src, pos):
+        if len(src) - pos < slen:
             return _nomatch_res
-        v = str(src[0:slen])
+        try:
+            v = str(src[pos:pos + slen])
+        except IndexError as e:
+            return _nomatch_res
         return (slen, action(v)) if v == s else _nomatch_res
     return fn
 
@@ -296,8 +221,11 @@ def match_iterable(name, pat, conv, options):
 
     seq = [x for x in pat] if isinstance(pat, str) else pat
     @rule(name, options)
-    def fn(src):
-        v = src[0]
+    def fn(src, pos):
+        try:
+            v = src[pos]
+        except IndexError as e:
+            v = empty
         if v in seq:
             v = conv(v)
             return (1, v) if v != nomatch else _nomatch_res
@@ -307,67 +235,88 @@ def match_iterable(name, pat, conv, options):
 
 def match_any(name, tests, conv, options):
     @rule(name, options)
-    def fn(src):
+    def fn(src, pos):
         for test in tests:
-            pos, value = test.match(src)
+            try:
+                dpos, value = test.match(src, pos)
+            except IndexError as e:
+                return _nomatch_res
+
             if value != nomatch:
                 value = conv(value)
                 if (value != nomatch):
-                    return (pos, value)
+                    return (dpos, value)
         return _nomatch_res
     fn.children = tests
     return fn
 
 def match_always(name, dummy, action, options):
     @rule(name, options)
-    def fn(src):
-        v = action(src[0])
+    def fn(src, pos):
+        try:
+            v = src[pos]
+        except IndexError as e:
+            v = empty
+        v = action(v)
         return (1, v) if v != nomatch else _nomatch_res
     return fn
 
 def match_seq(name, tests, conv, options):
     @rule(name, options)
-    def fn(src):
+    def fn(src, spos):
         total = []
-        pos = 0
+        pos = spos
         for test in tests:
-            dpos, value = test.match(src[pos:])
+            try:
+                dpos, value = test.match(src, pos)
+            except IndexError as e:
+                dpos, value = _nomatch_res
             if value == nomatch:
                 return _nomatch_res
             if value != empty:
                 total.append(value)
             pos += dpos
         res = conv(total)
-        return (pos, res) if res != nomatch else _nomatch_res
+        return (pos - spos, res) if res != nomatch else _nomatch_res
     fn.children = tests
     return fn
 
 def one_more(name, test, conv, options):
     @rule(name, options)
-    def fn(src):
+    def fn(src, spos):
         total = []
-        pos = 0
-        dpos, value = test.match(src)
+        pos = spos
+        try:
+            dpos, value = test.match(src, pos)
+        except IndexError as e:
+            return _nomatch_res
         if value == nomatch:
             return _nomatch_res
         while value != nomatch:
             if value != empty:
                 total.append(value)
             pos += dpos
-            dpos, value = test.match(src[pos:])
+            try:
+                dpos, value = test.match(src, pos)
+            except IndexError as e:
+                dpos, value = 0, nomatch
         res = conv(total)
-        return (pos, res) if res != nomatch else _nomatch_res
+        return (pos - spos, res) if res != nomatch else _nomatch_res
     fn.children = list((test,))
     return fn
 
 def mk_closed_range(begin, end):
     def closed_range(name, test, conv, options):
         @rule(name, options)
-        def fn(src):
+        def fn(src, spos):
             count = 0
             total = []
-            pos = 0
-            dpos, value = test.match(src)
+            pos = spos
+            try:
+                dpos, value = test.match(src, pos)
+            except IndexError as e:
+                dpos, value = _nomatch_res
+
             if value == nomatch:
                 return _nomatch_res
             while value != nomatch:
@@ -377,10 +326,13 @@ def mk_closed_range(begin, end):
                 if value != empty:
                     total.append(value)
                 pos += dpos
-                dpos, value = test.match(src[pos:])
+                try:
+                    dpos, value = test.match(src, pos)
+                except IndexError as e:
+                    dpos, value = _nomatch_res
             if count >= begin:
                 res = conv(total)
-                return (pos, res) if res != nomatch else _nomatch_res
+                return (pos - spos, res) if res != nomatch else _nomatch_res
             else:
                 return _nomatch_res
 
@@ -390,40 +342,54 @@ def mk_closed_range(begin, end):
 
 def zero_more(name, test, conv, options):
     @rule(name, options)
-    def fn(src):
+    def fn(src, spos):
         total = []
-        pos = 0
-        dpos, value = test.match(src)
+        pos = spos
+        try:
+            dpos, value = test.match(src, pos)
+        except IndexError as e:
+            dpos, value = _nomatch_res
+
         while value != nomatch:
             if value != empty:
                 total.append(value)
             pos += dpos
-            dpos, value = test.match(src[pos:])
+            try:
+                dpos, value = test.match(src, pos)
+            except IndexError as e:
+                dpos, value = _nomatch_res
         res = conv(total)
-        return (pos, res) if res != nomatch else _nomatch_res
+        return (pos - spos, res) if res != nomatch else _nomatch_res
     fn.children = list((test,))
     return fn
 
 def range_0_1(name, test, conv, options):
     @rule(name, options)
-    def fn(src):
-        pos, value = test.match(src)
+    def fn(src, spos):
+        try:
+            dpos, value = test.match(src, spos)
+        except IndexError as e:
+            dpos, value = _nomatch_res
         if value == nomatch:
-            pos, value = (0, empty)
+            dpos, value = (0, empty)
 
         value = conv(value)
-        return (pos, value) if value != nomatch else _nomatch_res
+        return (dpos, value) if value != nomatch else _nomatch_res
     fn.children = list((test,))
     return fn
 
 def not_equal(name, test, conv, options):
     @rule(name, options)
-    def fn(src):
-        if src[0] == empty:
-            return _nomatch_res
-        pos, value = test.match(src)
+    def fn(src, spos):
+        try:
+            dpos, value = test.match(src, spos)
+        except IndexError as e:
+            dpos, value = _nomatch_res
         if value == nomatch:
-            value = conv(src[0])
+            try:
+                value = conv(src[spos])
+            except IndexError as e:
+                value = nomatch
             return (0, value) if value != nomatch else _nomatch_res
         else:
             return _nomatch_res
@@ -432,11 +398,14 @@ def not_equal(name, test, conv, options):
 
 def convert(name, test, action, options):
     @rule(name, options)
-    def fn(src):
-        pos, value = test.match(src)
+    def fn(src, spos):
+        try:
+            dpos, value = test.match(src, spos)
+        except IndexError as e:
+            dpos, value = _nomatch_res
         if value != nomatch:
             value = action(value)
-            return (pos, value) if value != nomatch else _nomatch_res
+            return (dpos, value) if value != nomatch else _nomatch_res
         else:
             return _nomatch_res
     fn.children = list((test,))
@@ -444,8 +413,11 @@ def convert(name, test, action, options):
 
 def lookahead(name, test, conv, options):
     @rule(name, options)
-    def fn(src):
-        pos, value = test.match(src)
+    def fn(src, spos):
+        try:
+            dpos, value = test.match(src, spos)
+        except IndexError as e:
+            dpos, value = _nomatch_res
         if value != nomatch:
             value = conv(value)
             return (0, value) if value != nomatch else _nomatch_res

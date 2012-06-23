@@ -36,7 +36,7 @@ etc. are not used. To correctly parse iterable source one should wrap
 it with the source() function.
 
         parser = abc()
-        src = source('a')
+        src = 'a'
         position, result = parser.parse(src)
         if result != nomatch:
             print "MATCH", result, "@", position

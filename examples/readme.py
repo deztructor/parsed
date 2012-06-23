@@ -9,12 +9,11 @@
 from parsed import *
 
 #using to test and see how parser works
-def test_parser(generator, src_str):
+def test_parser(generator, src):
     generator.parser_cache_reset()
     parser = generator(mk_options(is_trace = True))
     print "Using", parser.__name__
-    print "Parsing:", repr(src_str)
-    src = source(src_str)
+    print "Parsing:", repr(src)
     print "GOT:", parser.match(src)
     print
 
