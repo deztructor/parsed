@@ -11,8 +11,8 @@ from Common import *
 
 class Rule(object):
 
-    def __init__(self, fn, name):
         self.match = fn
+    def __init__(self, fn, name, options):
         self.__name__ = name
         self.__children = tuple()
 
@@ -40,10 +40,9 @@ class CachingRule(Rule):
 
     _cache_hits = 0
 
-    def __init__(self, fn, name):
-        super(CachingRule, self).__init__(fn, name)
-        self.__fn = self.match
-        self.match = self.__match
+    def __init__(self, fn, name, options):
+        self.__fn = fn
+        super(CachingRule, self).__init__(self.__match, name, options)
         self.__cache = dict()
 
     def __match(self, src):
@@ -115,7 +114,7 @@ def rule(name, options):
 
     def decorate(match_fn):
         cls = CachingRule if options.is_remember else Rule
-        fn = cls(match_fn, mk_name(name))
+        fn = cls(match_fn, mk_name(name), options)
         if options.is_trace:
             return Tracer(fn)
         else:
