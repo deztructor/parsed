@@ -174,6 +174,32 @@ class Stopwatch(object):
     def dt(self):
         return self._now - self.begin
 
+def apply_on_graph(top, operation_accessor, child_accessor):
+    class Dummy:
+        pass
+    def cookie_scope(node, attr_name):
+        def on_enter():
+            setattr(node, attr_name, True)
+        def on_exit(*args):
+            delattr(node, attr_name)
+        return Scope(on_enter, on_exit)
+
+    d = Dummy()
+    cookie_name = '_tmp_op_' + str(id(d))
+
+    def do(node):
+        if hasattr(node, cookie_name):
+            return None
+        with cookie_scope(node, cookie_name):
+            op = operation_accessor(node)
+            return (op(), [do(x) for x in child_accessor(node)])
+
+    with cookie_scope(top, cookie_name):
+        op = operation_accessor(top)
+        cc = child_accessor(top)
+        return (op(), [do(x) for x in cc])
+
+
 if __name__ == '__main__':
     o = Options(a = 1, b = 2)
     print dir(o)
