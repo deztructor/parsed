@@ -161,7 +161,7 @@ class InfiniteInput(object):
     after the end of source input
     '''
 
-    len_limit = 1024 * 64
+    len_limit = 1024 * 1024 * 128
 
     def __init__(self, src, begin = 0, end = None):
         self.__s = src
