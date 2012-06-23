@@ -33,7 +33,7 @@ def number(): return atom_float | atom_dec | atom_hex > value
 @rule
 def escaped(): return '\\' + any_char > (lambda x: unescape(first(x)))
 @rule
-def ne_dquote(): return ~char('"') + any_char > second
+def ne_dquote(): return ~char('"') + any_char > first
 @rule
 def str_chrs(): return escaped | ne_dquote[0:] > list2str
 @rule
