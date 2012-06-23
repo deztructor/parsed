@@ -176,6 +176,11 @@ TODO
 
 * is_remember: if True --- use memoization
 
+* use_unicode
+
+* is_stat: gather matching statistics (now only hits and miss count
+  for each rule)
+
 What's next?
 ------------
 

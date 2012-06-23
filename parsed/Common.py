@@ -23,7 +23,7 @@ def is_str(c):
 
 def mk_options(**kwargs):
     res = Options(is_trace = False, is_remember = True,
-                  use_unicode = False)
+                  use_unicode = False, is_stat = False)
     res.update(kwargs)
     return res
 

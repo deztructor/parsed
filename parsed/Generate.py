@@ -14,6 +14,9 @@ class Forward(object):
     def __init__(self, name):
         self.name = ''.join(['>', name])
 
+    def _get_stat(self, cookie):
+        return self.__rule._get_stat(cookie)
+
     def use(self, rule):
         self.__rule = rule
 

@@ -8,13 +8,47 @@ import cor
 from cor import Err
 from Common import *
 
-
 class Rule(object):
 
-        self.match = fn
     def __init__(self, fn, name, options):
+        if options.is_stat:
+            self.__fn = fn
+            self.match = self.__match_stat
+            self.__stat = cor.Options(hits = 0, misses = 0)
+            self.__stat_cookie = None
+        else:
+            self.match = fn
         self.__name__ = name
         self.__children = tuple()
+
+    def __match_stat(self, src):
+        pos, value = self.__fn(src)
+        if value == nomatch:
+            self.__stat.misses += 1
+        else:
+            self.__stat.hits += 1
+        return pos, value
+
+    def _get_stat(self, cookie):
+        if self.__stat_cookie == cookie:
+            return None
+        self.__stat_cookie = cookie
+        if not hasattr(self, '_Rule__stat'):
+            return []
+        res = [(self.__name__, self.__stat)] + \
+              [x._get_stat(cookie) for x in self.children]
+        self.__stat_cookie = None
+        return res
+
+    @property
+    def stat(self):
+        if not hasattr(self, '_Rule__stat'):
+            return []
+        self.__stat_cookie = self
+        res = [(self.__name__, self.__stat)] + \
+              [x._get_stat(self) for x in self.children]
+        self.__stat_cookie = None
+        return res
 
     @property
     def children(self):
