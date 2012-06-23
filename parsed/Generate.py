@@ -136,13 +136,14 @@ class Rule(object):
         return mk_rule_range(self, r, self._next_child_name)
 
     def __gt__(self, action):
-        if self._action == action:
-            return self
-        res = self.copy
         if action.__name__ == '<lambda>':
             action.__name__ = ''.join(['!', self.name])
-        res._action = action
-        return res
+        if isinstance(self, TopRule):
+            return Converter(self, self.name, action)
+        if self._action == action:
+            return self
+        self._action = action
+        return self
 
     @property
     def action(self):
@@ -210,7 +211,13 @@ class Modifier(Rule):
         return self.__class__(self.rule, self.name, self.default_action)
 
     def _prepare_context(self, options):
-            return self.rule(options)
+        return self.rule(options)
+
+class Converter(Modifier):
+
+    def __init__(self, rule, name, action):
+        super(Converter, self).__init__(rule, name, action)
+        self.fn = convert
 
 class Aggregate(Rule):
 
@@ -236,8 +243,6 @@ class TopRule(RuleWithData):
     def _mk_parser(self, name, generator, action, options):
         rule = generator()
         rule.name = '.'.join([name, rule.name])
-        if action is not None:
-            rule._action = action
         parser = rule(options)
         return parser
 

@@ -395,6 +395,18 @@ def not_equal(name, test, conv, options):
     fn.children = list((test,))
     return fn
 
+def convert(name, test, action, options):
+    @rule(name, options)
+    def fn(src):
+        pos, value = test.match(src)
+        if value != nomatch:
+            value = action(value)
+            return (pos, value) if value != nomatch else _nomatch_res
+        else:
+            return _nomatch_res
+    fn.children = list((test,))
+    return fn
+
 def lookahead(name, test, conv, options):
     @rule(name, options)
     def fn(src):
