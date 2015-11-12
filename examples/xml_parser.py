@@ -193,10 +193,10 @@ if __name__ == '__main__':
     def example():
         import parsed.cor as cor
         sw = cor.Stopwatch()
-        options = mk_options(is_trace = False,
-                             is_remember = True,
-                             use_unicode = True,
-                             is_stat = False)
+        options = mk_options(trace_depth=0,
+                             is_remember=True,
+                             use_unicode=True,
+                             is_stat=False)
         p = xml_parser(xml_gen, options)
         print sw.dt
 

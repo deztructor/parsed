@@ -4,7 +4,7 @@
 # Copyright (c) 2012 Denis Zalevskiy
 # Licensed under MIT License
 
-from cor import const, nth, Options
+from .cor import const, nth, Options
 
 nomatch = const('nomatch')
 empty = const('empty')
@@ -17,13 +17,17 @@ second = nth(1)
 third = nth(2)
 def list2str(x): return ''.join(x)
 def str_from(idx): return lambda x: list2str(x[idx])
+def empty2str(x): return '' if x == empty else x
 
+def value_trace(x):
+    print(x)
+    return x
 def is_str(c):
-    return isinstance(c, str) or isinstance(c, unicode) or c == empty
+    return isinstance(c, str) or c == empty
 
 def mk_options(**kwargs):
-    res = Options(is_trace = False, is_remember = True,
-                  use_unicode = False, is_stat = False)
+    res = Options(trace_depth=0, is_remember=True,
+                  use_unicode=False, is_stat=False)
     res.update(kwargs)
     return res
 

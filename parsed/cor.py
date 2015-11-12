@@ -21,6 +21,38 @@ def const(self_name_, base = object, **attrs):
         attrs['__repr__'] = lambda *args: self_name_
     return type(self_name_, (base,), attrs)()
 
+class Maybe(collections.namedtuple('Maybe', 'value')):
+    def __bool__(self):
+        return self.value != Ellipsis
+
+class _Nothing(Maybe):
+    def __new__(cls):
+        return super().__new__(cls, None)
+
+    def apply(self, fn):
+        return Nothing
+
+    def get(self, defval=None):
+        return defval
+
+    def __or__(self, other):
+        return other
+
+    def __bool__(self):
+        return False
+
+Nothing = _Nothing()
+
+class Just(Maybe):
+    def apply(self, fn):
+        return Just(fn(self.value))
+
+    def get(self, _):
+        return self.value
+
+    def __or__(self, _):
+        return self
+
 def prop_map(prop_map_name_, **kwargs):
     res = type(prop_map_name_, (object,), {})
     [setattr(res, k, staticmethod(v) if is_function(v) else v) \
@@ -63,7 +95,7 @@ class Err(Exception):
         super(Err, self).__init__(msg.format(*args, **kwargs))
 
 def log(msg, *args, **kwargs):
-    print >>sys.stderr, msg.format(*args, **kwargs)
+    print(msg.format(*args, **kwargs), file=sys.stderr)
 
 def __traceback():
     t = traceback.format_exc().strip()
@@ -122,7 +154,19 @@ def escape_str(s):
     return ''.join([escape(c) for c in s])
 
 def wrap(wrapper, s):
-    return ''.join([wrapper, s, wrapper])
+    return ''.join([wrapper, str(s), wrapper])
+
+class LazyPrintable:
+    def __init__(self, fn):
+        self._fn = fn
+        self._cache = Ellipsis
+
+    def __str__(self):
+        if self._cache is Ellipsis:
+            self._cache = self._fn()
+        return self._cache
+
+    __repr__ = __str__
 
 class Options(object):
     def __init__(self, **kwargs):
@@ -199,10 +243,22 @@ def apply_on_graph(top, operation_accessor, child_accessor):
         cc = child_accessor(top)
         return (op(), [do(x) for x in cc])
 
+class Registry:
+    registered_objects = {}
+
+    def __init__(self, name, **kwargs):
+        objs = self.registered_objects
+        idx = 0
+        reg_name = name
+        while reg_name in objs:
+            reg_name = '/'.join((name, str(idx),))
+            idx += 1
+        objs[reg_name] = {'obj': self, 'props': kwargs}
+
 
 if __name__ == '__main__':
     o = Options(a = 1, b = 2)
-    print dir(o)
-    print o.a
+    print(dir(o))
+    print(o.a)
     o.update(dict(d = 3))
-    print dir(o)
+    print(dir(o))

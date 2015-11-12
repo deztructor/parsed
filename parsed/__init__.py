@@ -6,11 +6,16 @@
 
 import string
 
-import Generate
-import Rules
-from Common import *
+from . import Generate
+from . import Rules
+from .Common import *
 
 def rule(fn): return Generate.TopRule(fn)
+def mk_rule(context_name):
+    def ctx_rule(fn):
+        fn.__name__ = '.'.join((context_name, fn.__name__,))
+        return Generate.TopRule(fn)
+    return ctx_rule
 
 def char(c): return Generate.mk_first_match_rule(c)
 def text(s): return Generate.StringRule(s)
@@ -45,7 +50,9 @@ def hspace(): return char(' \t') > ignore
 @rule
 def crlf(): return text('\r\n') > ignore
 @rule
-def eol(): return eof | vspace > ignore
+def newline(): return crlf | '\r' | '\n' > ignore
+@rule
+def eol(): return eof | newline > ignore
 @rule
 def ne_eol(): return ~eol + any_char > ignore
 @rule

@@ -266,7 +266,7 @@ class TestDefault(MatchTestBase):
         self.basic_match(spaces, '\t\t\t', (3, empty))
         self.basic_match(spaces, '\t\r\n \t', (5, empty))
         self.basic_match(spaces, '-\t', (0, empty))
-        
+
 
     def test_ascii(self):
         a = ascii(mk_options())

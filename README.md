@@ -171,8 +171,8 @@ TODO
 
 ### Parsing options
 
-* is_trace: if it is set to True, parsing process will be traced into
-  stderr
+* trace_depth: if it is set to value > 0, parsing process will be traced into
+  stderr for the depth down to the trace_depth level
 
 * is_remember: if True --- use memoization
 

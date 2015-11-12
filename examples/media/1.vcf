@@ -1,0 +1,32 @@
+BEGIN:VCARD
+VERSION:3.0
+FN:3072761
+X-GENDER:Unspecified
+X-QTPROJECT-FAVORITE:false;0
+UID:789c759d-72b7-493a-b23f-f96537ae0d09
+TEL;TYPE=VOICE,HOME:3072761
+URL:favorlight.ru
+N:;;;;
+END:VCARD
+
+BEGIN:VCARD
+VERSION:3.0
+FN:alehru@jabber.ru
+X-GENDER:Unspecified
+X-QTPROJECT-FAVORITE:false;0
+UID:49
+X-JABBER:alehru@jabber.ru
+X-JABBER:alehru@jabber.ru
+N:;;;;
+END:VCARD
+
+BEGIN:VCARD
+VERSION:3.0
+FN:Aleksandr Misong (Andrey Tymchenko)
+N:Misong (Andrey Tymchenko);Aleksandr;;;
+X-GENDER:Unspecified
+X-QTPROJECT-FAVORITE:false;0
+UID:813
+TEL;TYPE=CELL,VOICE:+7-906-2418690
+TEL;TYPE=CELL,VOICE:+79111446340
+END:VCARD

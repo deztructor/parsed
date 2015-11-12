@@ -68,9 +68,9 @@ def alist(): return '(' + list_item[1:] + spaces + ')' > first
 def sexp(): return comment | alist | atom > value
 
 
-#default_options.is_trace = True
+#default_options.trace_depth = 2
 # cache_clean(globals())
 
-p = sexp(mk_options(is_trace = True))
+p = sexp(mk_options(trace_depth = 10))
 s = source('(1 2;er\n#f "dd")')
 print p.parse(s)

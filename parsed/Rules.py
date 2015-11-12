@@ -4,13 +4,25 @@
 # Copyright (c) 2012 Denis Zalevskiy
 # Licensed under MIT License
 
-import cor
-from cor import Err
-from Common import *
+from . import cor
+from .cor import Err
+from .Common import *
 
-class Rule(object):
+import collections
+import functools
+
+ParseResult = collections.namedtuple('ParseResult', 'position data')
+
+class RuleMixin:
+
+    def parse(self, src):
+        self.cache_clear()
+        return self.match(src, 0)
+
+class Rule(cor.Registry, RuleMixin):
 
     def __init__(self, fn, name, options):
+        super().__init__(name, fn=fn, options=options)
         if options.is_stat:
             self.__fn = fn
             self.match = self.__match_stat
@@ -18,7 +30,7 @@ class Rule(object):
         else:
             self.match = fn
         self.__name__ = name
-        self.__children = tuple()
+        self._children = tuple()
 
     def __match_stat(self, src, pos):
         pos, value = self.__fn(src, pos)
@@ -40,19 +52,15 @@ class Rule(object):
 
     @property
     def children(self):
-        return self.__children
+        return self._children
 
     @children.setter
     def children(self, v):
-        self.__children = v
+        self._children = v
 
     @property
     def name(self):
         return self.__name__
-
-    def parse(self, src):
-        self.cache_clear()
-        return self.match(src, 0)
 
     def _cache_clear(self):
         pass
@@ -79,9 +87,9 @@ class CachingRule(Rule):
         return res
 
     def _cache_clear(self):
-        self.__cache = dict()
+        self.__cache = {}
 
-class Tracer(object):
+class Tracer(RuleMixin):
 
     debug_indent_level = 0
     debug_indent_sym = ' ' * 2
@@ -93,24 +101,27 @@ class Tracer(object):
         Tracer.debug_indent_level -= 1
 
     def debug_print(self, msg, *args, **kwargs):
-        indent = Tracer.debug_indent_sym * Tracer.debug_indent_level
-        cor.log("{}{}", indent, msg.format(*args, **kwargs))
+        indent_level = Tracer.debug_indent_level
+        if indent_level < self._max_depth:
+            indent = Tracer.debug_indent_sym * indent_level
+            cor.log("{}{}", indent, msg.format(*args, **kwargs))
 
-    def __init__(self, rule):
+    def __init__(self, rule, max_depth):
         self.__indent = cor.Scope(self.__indent_plus,
                                   self.__indent_minus)
         self.__rule = rule
         self.__name__ = rule.__name__
-
-    def parse(self, src):
-        return self.match(src, 0)
+        self._max_depth = max_depth
 
     def match(self, src, pos):
-        dend = len(src) - pos
-        pr = str(src[pos:]) if dend <= 20 \
-             else ''.join([str(src[pos:pos + 20]), '...'])
-        pr = cor.escape_str(pr)
-        self.debug_print("{}({}) {{", self.__name__, cor.wrap('"', pr))
+        def tracable():
+            dend = len(src) - pos
+            pr = str(src[pos:]) if dend <= 20 \
+                 else ''.join([str(src[pos:pos + 20]), '...'])
+            pr = cor.escape_str(pr)
+            return pr
+        self.debug_print("{}({}) {{", self.__name__
+                         , cor.wrap('"', cor.LazyPrintable(tracable)))
         with self.__indent:
             res = self.__rule.match(src, pos)
         self.debug_print("}} => {}", cor.printable_args(res))
@@ -131,6 +142,8 @@ class Tracer(object):
     def cache_clear(self):
         return self.__rule.cache_clear()
 
+    def _cache_clear(self):
+        return self.__rule.cache_clear()
 
 def rule(name, options):
     def mk_name(name):
@@ -139,15 +152,15 @@ def rule(name, options):
     def decorate(match_fn):
         cls = CachingRule if options.is_remember else Rule
         fn = cls(match_fn, mk_name(name), options)
-        if options.is_trace:
-            return Tracer(fn)
+        if options.trace_depth > 0:
+            return Tracer(fn, options.trace_depth)
         else:
             return fn
 
     return decorate
 
 #standard return if rule is not matched
-_nomatch_res = (0, nomatch)
+_nomatch_res = ParseResult(0, nomatch)
 
 def match_first_predicate(pred):
     def wrapper(name, dummy, action, options):
@@ -159,22 +172,16 @@ def match_first_predicate(pred):
                 v = empty
             if pred(v):
                 v = action(v)
-                return (1, v) if v != nomatch else _nomatch_res
+                return ParseResult(1, v) if v != nomatch else _nomatch_res
             else:
                 return _nomatch_res
         return fn
     return wrapper
 
 def match_first(name, s, action, options):
-    if isinstance(s, str) or isinstance(s, unicode):
+    if isinstance(s, str):
         if len(s) != 1:
             raise Err("{} len != 1", s)
-        if options.use_unicode:
-            if isinstance(s, str):
-                s = s.decode()
-        else:
-            if isinstance(s, unicode):
-                s = s.encode()
     elif s != empty:
         raise Err("{} is not a string", s)
 
@@ -191,18 +198,12 @@ def match_first(name, s, action, options):
             return _nomatch_res
 
         v = action(v)
-        return (1, v) if v != nomatch else _nomatch_res
+        return ParseResult(1, v) if v != nomatch else _nomatch_res
     return fn
 
 def match_string(name, s, action, options):
-    if not (isinstance(s, str) or isinstance(s, unicode)):
+    if not isinstance(s, str):
         raise Err("{} is not a string", s)
-    if options.use_unicode:
-        if isinstance(s, str):
-            s = s.decode()
-    else:
-        if isinstance(s, unicode):
-            s = s.encode()
     slen = len(s)
     @rule(name, options)
     def fn(src, pos):
@@ -212,7 +213,7 @@ def match_string(name, s, action, options):
             v = str(src[pos:pos + slen])
         except IndexError as e:
             return _nomatch_res
-        return (slen, action(v)) if v == s else _nomatch_res
+        return ParseResult(slen, action(v)) if v == s else _nomatch_res
     return fn
 
 def match_iterable(name, pat, conv, options):
@@ -228,7 +229,7 @@ def match_iterable(name, pat, conv, options):
             v = empty
         if v in seq:
             v = conv(v)
-            return (1, v) if v != nomatch else _nomatch_res
+            return ParseResult(1, v) if v != nomatch else _nomatch_res
         else:
             return _nomatch_res
     return fn
@@ -245,7 +246,7 @@ def match_any(name, tests, conv, options):
             if value != nomatch:
                 value = conv(value)
                 if (value != nomatch):
-                    return (dpos, value)
+                    return ParseResult(dpos, value)
         return _nomatch_res
     fn.children = tests
     return fn
@@ -258,7 +259,7 @@ def match_always(name, dummy, action, options):
         except IndexError as e:
             v = empty
         v = action(v)
-        return (1, v) if v != nomatch else _nomatch_res
+        return ParseResult(1, v) if v != nomatch else _nomatch_res
     return fn
 
 def match_seq(name, tests, conv, options):
@@ -277,7 +278,7 @@ def match_seq(name, tests, conv, options):
                 total.append(value)
             pos += dpos
         res = conv(total)
-        return (pos - spos, res) if res != nomatch else _nomatch_res
+        return ParseResult(pos - spos, res) if res != nomatch else _nomatch_res
     fn.children = tests
     return fn
 
@@ -301,8 +302,8 @@ def one_more(name, test, conv, options):
             except IndexError as e:
                 dpos, value = 0, nomatch
         res = conv(total)
-        return (pos - spos, res) if res != nomatch else _nomatch_res
-    fn.children = list((test,))
+        return ParseResult(pos - spos, res) if res != nomatch else _nomatch_res
+    fn.children = (test,)
     return fn
 
 def mk_closed_range(begin, end):
@@ -332,11 +333,13 @@ def mk_closed_range(begin, end):
                     dpos, value = _nomatch_res
             if count >= begin:
                 res = conv(total)
-                return (pos - spos, res) if res != nomatch else _nomatch_res
+                return ParseResult(pos - spos, res) \
+                    if res != nomatch \
+                       else _nomatch_res
             else:
                 return _nomatch_res
 
-        fn.children = list((test,))
+        fn.children = (test,)
         return fn
     return closed_range
 
@@ -359,8 +362,10 @@ def zero_more(name, test, conv, options):
             except IndexError as e:
                 dpos, value = _nomatch_res
         res = conv(total)
-        return (pos - spos, res) if res != nomatch else _nomatch_res
-    fn.children = list((test,))
+        return ParseResult(pos - spos, res) \
+            if res != nomatch \
+               else _nomatch_res
+    fn.children = (test,)
     return fn
 
 def range_0_1(name, test, conv, options):
@@ -374,8 +379,10 @@ def range_0_1(name, test, conv, options):
             dpos, value = (0, empty)
 
         value = conv(value)
-        return (dpos, value) if value != nomatch else _nomatch_res
-    fn.children = list((test,))
+        return ParseResult(dpos, value) \
+            if value != nomatch \
+               else _nomatch_res
+    fn.children = (test,)
     return fn
 
 def not_equal(name, test, conv, options):
@@ -390,10 +397,12 @@ def not_equal(name, test, conv, options):
                 value = conv(src[spos])
             except IndexError as e:
                 value = nomatch
-            return (0, value) if value != nomatch else _nomatch_res
+            return ParseResult(0, value) \
+                if value != nomatch \
+                   else _nomatch_res
         else:
             return _nomatch_res
-    fn.children = list((test,))
+    fn.children = (test,)
     return fn
 
 def convert(name, test, action, options):
@@ -405,10 +414,12 @@ def convert(name, test, action, options):
             dpos, value = _nomatch_res
         if value != nomatch:
             value = action(value)
-            return (dpos, value) if value != nomatch else _nomatch_res
+            return ParseResult(dpos, value) \
+                if value != nomatch \
+                   else _nomatch_res
         else:
             return _nomatch_res
-    fn.children = list((test,))
+    fn.children = (test,)
     return fn
 
 def lookahead(name, test, conv, options):
@@ -420,8 +431,10 @@ def lookahead(name, test, conv, options):
             dpos, value = _nomatch_res
         if value != nomatch:
             value = conv(value)
-            return (0, value) if value != nomatch else _nomatch_res
+            return ParseResult(0, value) \
+                if value != nomatch \
+                   else _nomatch_res
         else:
             return _nomatch_res
-    fn.children = list((test,))
+    fn.children = (test,)
     return fn

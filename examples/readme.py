@@ -11,7 +11,7 @@ from parsed import *
 #using to test and see how parser works
 def test_parser(generator, src):
     generator.parser_cache_reset()
-    parser = generator(mk_options(is_trace = True))
+    parser = generator(mk_options(trace_depth=20))
     print "Using", parser.__name__
     print "Parsing:", repr(src)
     print "GOT:", parser.match(src)

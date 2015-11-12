@@ -4,9 +4,11 @@
 # Copyright (c) 2012 Denis Zalevskiy
 # Licensed under MIT License
 
-from Rules import *
-from cor import is_iterable, Err, integers, track, log
-from Common import *
+from . import Rules
+from . import cor
+from .cor import Just, Nothing
+from .cor import is_iterable, Err, integers, track, log
+from .Common import *
 
 inf = const('inf')
 
@@ -40,7 +42,7 @@ def mk_first_match_rule(c):
             cls = FirstEqualAnyRule
     elif callable(c):
         cls = FirstEqualPredRule
-        c = match_first_predicate(c)
+        c = Rules.match_first_predicate(c)
     else:
         raise Err("Don't know how to make match from {}", c)
     return cls(c)
@@ -79,28 +81,29 @@ def mk_rule_range(rule, from_to, name):
 
     if not begin:
         if end == inf:
-            fn = zero_more
+            fn = Rules.zero_more
         elif end == 1:
-            fn = range_0_1
+            fn = Rules.range_0_1
         else:
             err()
     elif begin == 1 and end == inf:
-        fn = one_more
+        fn = Rules.one_more
     elif end != inf and begin <= end:
-        fn = mk_closed_range(begin, end)
+        fn = Rules.mk_closed_range(begin, end)
     else:
         err()
 
     return RangeRule(rule, fn, name)
 
 
-class Rule(object):
+class Rule(cor.Registry):
 
     def __init__(self, name, action):
+        super().__init__(name, action=action)
         self.name = name
         self.default_action = action
         self._action = None
-        self.__integers = integers()
+        self.__integers = iter(integers())
         self.__parser = None
         self.__options = None
 
@@ -112,7 +115,7 @@ class Rule(object):
 
     @property
     def _next_child_name(self):
-        return '_'.join([self.name, str(self.__integers.next())])
+        return '_'.join([self.name, str(next(self.__integers))])
 
     def __add__(self, other):
         return mk_rule_seq(self, other, self._next_child_name)
@@ -201,6 +204,10 @@ class RuleWithData(Rule):
         self.data = data
         super(RuleWithData, self).__init__(name, action)
 
+    def copied(self, data=Nothing, name=Nothing, action=Nothing):
+        return type(self)(data.get(self.data), name.get(self.name),
+                          action.get(self.default_action))
+
     @property
     def copy(self):
         return self.__class__(self.data, self.name, self.default_action)
@@ -216,6 +223,10 @@ class Modifier(Rule):
         self.rule = rule
         super(Modifier, self).__init__(name, action)
 
+    def copied(self, data=Nothing, name=Nothing, action=Nothing):
+        return type(self)(data.get(self.data), name.get(self.name),
+                          action.get(self.default_action))
+
     @property
     def copy(self):
         return self.__class__(self.rule, self.name, self.default_action)
@@ -227,7 +238,7 @@ class Converter(Modifier):
 
     def __init__(self, rule, name, action):
         super(Converter, self).__init__(rule, name, action)
-        self.fn = convert
+        self.fn = Rules.convert
 
 class Aggregate(Rule):
 
@@ -237,6 +248,10 @@ class Aggregate(Rule):
                 raise Err("{} should be rule", rule)
         self.rules = rules
         super(Aggregate, self).__init__(name, action)
+
+    def copied(self, data=Nothing, name=Nothing, action=Nothing):
+        return type(self)(data.get(self.data), name.get(self.name),
+                          action.get(self.default_action))
 
     @property
     def copy(self):
@@ -249,6 +264,9 @@ class TopRule(RuleWithData):
     def __init__(self, fn):
         super(TopRule, self).__init__(fn, fn.__name__, None)
         self.fn = self._mk_parser
+
+    def copied(self, fn=Nothing):
+        return type(self)(fn.get(self.fn))
 
     def _mk_parser(self, name, generator, action, options):
         rule = generator()
@@ -263,7 +281,7 @@ class TopRule(RuleWithData):
 class SeqRule(Aggregate):
     def __init__(self, rules, name, action = value):
         super(SeqRule, self).__init__(rules, name, action)
-        self.fn = match_seq
+        self.fn = Rules.match_seq
 
     def __add__(self, other):
         return SeqRule(self.rules + (mk_rule(other),), self.name)
@@ -284,7 +302,7 @@ class ChoiceRule(Aggregate):
         for r in rules:
             r.default_action = value
         super(ChoiceRule, self).__init__(rules, name, action)
-        self.fn = match_any
+        self.fn = Rules.match_any
 
     def __or__(self, other):
         return ChoiceRule(self.rules + (mk_rule(other),), self.name)
@@ -295,7 +313,7 @@ class ChoiceRule(Aggregate):
 class NotRule(Modifier):
     def __init__(self, rule, name, action = ignore):
         super(NotRule, self).__init__(rule, name, action)
-        self.fn = not_equal
+        self.fn = Rules.not_equal
 
     def __invert__(self):
         return self.rule
@@ -304,14 +322,14 @@ class StringRule(RuleWithData):
     def __init__(self, s, name = None, action = value):
         if name is None:
             name = ''.join(['str("', s, '")'])
-        self.fn = match_string
+        self.fn = Rules.match_string
         super(StringRule, self).__init__(s, name, action)
 
 class FirstEqualRule(RuleWithData):
     def __init__(self, c, name = None, action = None):
         if name is None:
             name = ''.join(['chr("', str(c), '")'])
-        self.fn = match_first
+        self.fn = Rules.match_first
         if action is None:
             action = ignore
         super(FirstEqualRule, self).__init__(c, name, action)
@@ -320,7 +338,7 @@ class FirstEqualAnyRule(RuleWithData):
     def __init__(self, c, name = None, action = None):
         if name is None:
             name = ''.join(['any("', str(c), '")'])
-        self.fn = match_iterable
+        self.fn = Rules.match_iterable
         if action is None:
             action = value
         super(FirstEqualAnyRule, self).__init__(c, name, action)
@@ -334,16 +352,23 @@ class FirstEqualPredRule(RuleWithData):
             action = value
         super(FirstEqualPredRule, self).__init__(nomatch, name, action)
 
+    def copied(self, fn=Nothing, name=Nothing, action=Nothing):
+        return type(self)(fn.get(self.fn), name.get(self.name),
+                          action.get(self.default_action))
+
     @property
     def copy(self):
         return self.__class__(self.fn, self.name, self.default_action)
 
 class FirstConsumeRule(RuleWithData):
     def __init__(self, action = None):
-        self.fn = match_always
+        self.fn = Rules.match_always
         if action is None:
             action = value
         super(FirstConsumeRule, self).__init__(nomatch, 'anything', action)
+
+    def copied(self, action=Nothing):
+        return type(self)(action.get(self.default_action))
 
     @property
     def copy(self):
@@ -354,6 +379,10 @@ class RangeRule(Modifier):
         super(RangeRule, self).__init__(rule, name, value)
         self.fn = fn
 
+    def copied(self, rule=Nothing, fn=Nothing, name=Nothing):
+        return type(self)(rule.get(self.rule), fn.get(self.fn),
+                          name.get(self.name))
+
     @property
     def copy(self):
         return self.__class__(self.rule, self.fn, self.name)
@@ -362,7 +391,7 @@ class LookaheadRule(Modifier):
     def __init__(self, rule, name, action = ignore):
         name = '_'.join(['fwd', name])
         super(LookaheadRule, self).__init__(rule, name, action)
-        self.fn = lookahead
+        self.fn = Rules.lookahead
 
     def __neg__(self):
         return self
